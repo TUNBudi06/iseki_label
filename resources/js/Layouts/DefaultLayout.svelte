@@ -1,7 +1,7 @@
 <script>
     import '../../css/app.css';
     import { Link } from '@inertiajs/svelte';
-    import { route } from '@tunbudi06/inertia-route-helper';
+    import {routeUrl,isCurrentRoute} from '@tunbudi06/inertia-route-helper';
     import { home, about } from '$routes';
 
     let { children } = $props();
@@ -19,14 +19,16 @@
 
                     <div class="flex gap-4">
                         <Link
-                            href={route(home()).url}
-                            class="rounded-lg px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-100 dark:text-white dark:hover:bg-slate-800"
+                            href={routeUrl(home())}
+                            class="rounded-lg px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-100 dark:text-white data-[active=true]:bg-slate-300 dark:hover:bg-slate-800"
+                            data-active={isCurrentRoute(home().url)}
                         >
                             Home
                         </Link>
                         <Link
-                            href={route(about()).url}
-                            class="rounded-lg px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-100 dark:text-white dark:hover:bg-slate-800"
+                            href={routeUrl(about())}
+                            class="rounded-lg data-[active=true]:bg-slate-e00 px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-100 dark:text-white dark:hover:bg-slate-800"
+                            data-active={isCurrentRoute(about().url)}
                         >
                             About
                         </Link>

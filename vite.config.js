@@ -14,6 +14,7 @@ export default defineConfig({
                 manualChunks:{
                     'vendor-svelte': ['svelte', 'svelte/animate', 'svelte/easing', 'svelte/motion', 'svelte/store', 'svelte/transition'],
                     'vendor-icons': ['@lucide/svelte'],
+                    'vendor-plugin': ['@tunbudi06/inertia-route-helper'],
                     'vendor-shadcn': ['bits-ui'],
                 },
                 chunkFileNames: (chunkInfo) => {

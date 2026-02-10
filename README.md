@@ -5,6 +5,7 @@ A modern, full-stack web application starter template featuring Laravel 12, Svel
 ## ✨ Features
 
 ### Core Stack
+
 - **[Laravel 12](https://laravel.com)** - Modern PHP framework with elegant syntax
 - **[Svelte 5](https://svelte.dev)** - Reactive component framework with runes
 - **[Inertia.js](https://inertiajs.com)** - Monolithic SPA without API complexity
@@ -13,6 +14,7 @@ A modern, full-stack web application starter template featuring Laravel 12, Svel
 - **[Vite](https://vitejs.dev)** - Lightning-fast build tool
 
 ### Developer Experience
+
 - **[Laravel Wayfinder](https://github.com/laravel/wayfinder)** - Type-safe routing with auto-generated TypeScript routes
 - **[shadcn-svelte](https://www.shadcn-svelte.com/)** - Beautiful, accessible UI components (bits-ui)
 - **[Laravel Pint](https://laravel.com/docs/pint)** - Opinionated PHP code style fixer
@@ -22,6 +24,7 @@ A modern, full-stack web application starter template featuring Laravel 12, Svel
 - **[Laravel Boost](https://boost.laravel.com/)** - Enhanced AI development experience
 
 ### UI/UX Features
+
 - **Dark Mode Support** - Built-in dark mode with `mode-watcher`
 - **Responsive Design** - Mobile-first design approach
 - **Icon Library** - Lucide icons integration
@@ -118,17 +121,20 @@ Visit [http://localhost:8000](http://localhost:8000) to see your application!
 ## 🛠️ Available Commands
 
 ### Development
+
 ```bash
 npm run dev              # Start Vite dev server
 php artisan serve        # Start Laravel dev server
 ```
 
 ### Building
+
 ```bash
 npm run build           # Build for production (client + SSR)
 ```
 
 ### Code Quality
+
 ```bash
 # PHP
 ./vendor/bin/pint       # Fix PHP code style
@@ -142,6 +148,7 @@ npm run format:check    # Check formatting
 ```
 
 ### Type Checking
+
 ```bash
 npx svelte-check        # Check Svelte component types
 ```
@@ -184,11 +191,11 @@ Route::get('/example', [ExampleController::class, 'index'])->name('example');
 <!-- resources/js/Pages/Example.svelte -->
 <script lang="ts">
     import DefaultLayout from '@/Layouts/DefaultLayout.svelte';
-    
+
     interface Props {
         message: string;
     }
-    
+
     let { message }: Props = $props();
 </script>
 
@@ -313,12 +320,14 @@ Path aliases are configured in `tsconfig.json`:
 ## 📚 Learn More
 
 ### Official Documentation
+
 - [Laravel Documentation](https://laravel.com/docs)
 - [Svelte 5 Documentation](https://svelte.dev/docs)
 - [Inertia.js Documentation](https://inertiajs.com)
 - [Tailwind CSS Documentation](https://tailwindcss.com/docs)
 
 ### Video Tutorials
+
 - [Laracasts](https://laracasts.com) - Laravel & PHP screencasts
 - [Svelte Tutorial](https://learn.svelte.dev) - Interactive Svelte tutorial
 
@@ -327,6 +336,7 @@ Path aliases are configured in `tsconfig.json`:
 ### Common Issues
 
 **Vite not connecting in development:**
+
 ```bash
 # Clear Vite cache
 rm -rf node_modules/.vite
@@ -334,12 +344,14 @@ npm run dev
 ```
 
 **TypeScript errors with routes:**
+
 ```bash
 # Regenerate Wayfinder routes
 php artisan wayfinder:generate
 ```
 
 **Styles not loading:**
+
 ```bash
 # Rebuild assets
 npm run build
@@ -356,6 +368,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## 💡 Credits
 
 Built with amazing open-source technologies:
+
 - [Laravel](https://laravel.com)
 - [Svelte](https://svelte.dev)
 - [Inertia.js](https://inertiajs.com)

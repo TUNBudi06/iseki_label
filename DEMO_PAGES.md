@@ -35,6 +35,7 @@ routes/
 ## Key Features Implemented
 
 ### ✅ 1. Default Layout Component
+
 **File:** `resources/js/Layouts/DefaultLayout.svelte`
 
 - **Imports `app.css`** at the top of the component
@@ -46,24 +47,29 @@ routes/
 - Children slot for page content
 
 ### ✅ 2. Home Page
+
 **File:** `resources/js/Pages/Home.svelte`
 
 **Features:**
+
 - Hero section with dynamic message prop
 - Feature cards using **shadcn Card component**
 - Call-to-action buttons using **shadcn Button component**
 - Route helper demo section showing:
-  - `routeUrl()` usage
-  - `route()` usage with JSON output
+    - `routeUrl()` usage
+    - `route()` usage with JSON output
 - Uses `about` route from Wayfinder
 
 **Props:**
+
 - `message` (optional): Welcome message text
 
 ### ✅ 3. About Page
+
 **File:** `resources/js/Pages/About.svelte`
 
 **Features:**
+
 - Technologies grid with 6 cards
 - Each card shows technology name, version, description
 - External links to documentation
@@ -73,6 +79,7 @@ routes/
 - Uses `home` route from Wayfinder
 
 **Props:**
+
 - `title` (optional): Page title
 - `description` (optional): Page description
 
@@ -81,11 +88,13 @@ routes/
 ## Route Helper Implementation
 
 ### Inertia Route Helper
+
 **Package:** `@tunbudi06/inertia-route-helper`
 
 **Initialization** (`resources/js/app.ts`):
+
 ```typescript
-import { initRouteHelper } from "@tunbudi06/inertia-route-helper/init";
+import { initRouteHelper } from '@tunbudi06/inertia-route-helper/init';
 
 createInertiaApp({
     setup({ el, App, props }) {
@@ -96,6 +105,7 @@ createInertiaApp({
 ```
 
 **Usage in Components:**
+
 ```typescript
 import { route, routeUrl } from '@tunbudi06/inertia-route-helper';
 import { home, about } from '$routes';
@@ -114,9 +124,11 @@ const aboutUrl = routeUrl(about());
 ```
 
 ### Wayfinder Integration
+
 **Package:** `@laravel/vite-plugin-wayfinder`
 
 **Configuration** (`vite.config.js`):
+
 ```javascript
 wayfinder({
     command: 'php artisan wayfinder:generate',
@@ -126,16 +138,17 @@ wayfinder({
 ```
 
 **Generated Routes** (`resources/js/routes/index.ts`):
+
 ```typescript
 export const home = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: home.url(options),
     method: 'get',
-})
+});
 
 export const about = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: about.url(options),
     method: 'get',
-})
+});
 ```
 
 ---
@@ -143,43 +156,45 @@ export const about = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 ## shadcn-ui Components Used
 
 ### Button Component
+
 **Import:**
+
 ```typescript
 import { Button } from '$shadcn/components/ui/button';
 ```
 
 **Usage:**
+
 ```svelte
 <Button size="lg">Learn More</Button>
 <Button variant="outline" size="lg">View Documentation</Button>
 ```
 
 ### Card Components
+
 **Import:**
+
 ```typescript
-import { 
-    Card, 
-    CardContent, 
-    CardDescription, 
-    CardFooter, 
-    CardHeader, 
-    CardTitle 
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
 } from '$shadcn/components/ui/card';
 ```
 
 **Usage:**
+
 ```svelte
 <Card>
     <CardHeader>
         <CardTitle>Title</CardTitle>
         <CardDescription>Description</CardDescription>
     </CardHeader>
-    <CardContent>
-        Content here
-    </CardContent>
-    <CardFooter>
-        Footer content
-    </CardFooter>
+    <CardContent>Content here</CardContent>
+    <CardFooter>Footer content</CardFooter>
 </Card>
 ```
 
@@ -190,6 +205,7 @@ import {
 ### Controllers
 
 **HomeController.php:**
+
 ```php
 namespace App\Http\Controllers;
 
@@ -208,6 +224,7 @@ class HomeController extends Controller
 ```
 
 **AboutController.php:**
+
 ```php
 namespace App\Http\Controllers;
 
@@ -229,6 +246,7 @@ class AboutController extends Controller
 ### Routes
 
 **web.php:**
+
 ```php
 use App\Http\Controllers\AboutController;
 use App\Http\Controllers\HomeController;
@@ -240,6 +258,7 @@ Route::get('/about', [AboutController::class, 'index'])->name('about');
 ### Middleware
 
 **HandleInertiaRequests.php:**
+
 ```php
 public function share(Request $request): array
 {
@@ -255,6 +274,7 @@ public function share(Request $request): array
 ## Path Aliases Configuration
 
 **tsconfig.json:**
+
 ```json
 {
     "compilerOptions": {
@@ -272,6 +292,7 @@ public function share(Request $request): array
 ```
 
 **vite.config.js:**
+
 ```javascript
 resolve: {
     alias: {
@@ -288,11 +309,13 @@ resolve: {
 ## Running the Application
 
 ### 1. Generate Wayfinder Routes
+
 ```bash
 php artisan wayfinder:generate
 ```
 
 ### 2. Start Vite Dev Server
+
 ```bash
 npm run dev
 # or
@@ -300,11 +323,13 @@ bun run dev
 ```
 
 ### 3. Start Laravel Server
+
 ```bash
 php artisan serve
 ```
 
 ### 4. Access the Application
+
 - **Home Page:** http://localhost:8000/
 - **About Page:** http://localhost:8000/about
 
@@ -315,21 +340,25 @@ php artisan serve
 ### Adding New Routes
 
 1. **Create Controller:**
+
 ```bash
 php artisan make:controller MyPageController
 ```
 
 2. **Add Route in `routes/web.php`:**
+
 ```php
 Route::get('/my-page', [MyPageController::class, 'index'])->name('myPage');
 ```
 
 3. **Generate Wayfinder Routes:**
+
 ```bash
 php artisan wayfinder:generate
 ```
 
 4. **Create Svelte Page:**
+
 ```svelte
 <!-- resources/js/Pages/MyPage.svelte -->
 <script lang="ts">
@@ -342,6 +371,7 @@ php artisan wayfinder:generate
 ```
 
 5. **Use in Components:**
+
 ```typescript
 import { myPage } from '$routes';
 import { routeUrl } from '@tunbudi06/inertia-route-helper';
@@ -356,6 +386,7 @@ npx shadcn-svelte@latest add [component-name]
 ```
 
 Example:
+
 ```bash
 npx shadcn-svelte@latest add button card input form
 ```
@@ -364,48 +395,53 @@ npx shadcn-svelte@latest add button card input form
 
 ## Technologies Stack
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Laravel | 12.x | Backend framework |
-| PHP | 8.2+ | Server-side language |
-| Svelte | 5.x | Frontend framework |
-| Inertia.js | 2.x | Bridge between Laravel & Svelte |
-| Wayfinder | 0.1.x | TypeScript route generation |
-| inertia-route-helper | 2.x | Route URL building |
-| shadcn-svelte | Latest | UI component library |
-| Tailwind CSS | 4.x | Utility-first CSS framework |
-| Vite | 7.x | Build tool |
-| TypeScript | 5.x | Type safety |
+| Technology           | Version | Purpose                         |
+| -------------------- | ------- | ------------------------------- |
+| Laravel              | 12.x    | Backend framework               |
+| PHP                  | 8.2+    | Server-side language            |
+| Svelte               | 5.x     | Frontend framework              |
+| Inertia.js           | 2.x     | Bridge between Laravel & Svelte |
+| Wayfinder            | 0.1.x   | TypeScript route generation     |
+| inertia-route-helper | 2.x     | Route URL building              |
+| shadcn-svelte        | Latest  | UI component library            |
+| Tailwind CSS         | 4.x     | Utility-first CSS framework     |
+| Vite                 | 7.x     | Build tool                      |
+| TypeScript           | 5.x     | Type safety                     |
 
 ---
 
 ## Features Demonstrated
 
 ### ✅ Inertia.js Features
+
 - Server-side routing
 - Props passing from controller to component
 - SPA navigation with Link component
 - Page components
 
 ### ✅ Wayfinder Features
+
 - Type-safe route generation
 - Automatic route updates on file change
 - Named route support
 - HTTP method typing
 
 ### ✅ Route Helper Features
+
 - Absolute URL generation with `baseUrl`
 - `route()` function for full route objects
 - `routeUrl()` function for URL strings
 - Works seamlessly with Wayfinder routes
 
 ### ✅ Svelte 5 Features
+
 - Runes (`$props`, `$state`)
 - Snippet rendering (`{@render children()}`)
 - TypeScript support
 - Reactive imports
 
 ### ✅ shadcn-ui Features
+
 - Button variants (default, outline)
 - Card components with sections
 - Responsive design
@@ -413,6 +449,7 @@ npx shadcn-svelte@latest add button card input form
 - Tailwind CSS integration
 
 ### ✅ Layout System
+
 - Shared layout component
 - CSS imported once in layout
 - Navigation with active states
@@ -423,6 +460,7 @@ npx shadcn-svelte@latest add button card input form
 ## Troubleshooting
 
 ### Routes Not Found
+
 ```bash
 # Regenerate Wayfinder routes
 php artisan wayfinder:generate
@@ -433,16 +471,19 @@ php artisan route:clear
 ```
 
 ### TypeScript Errors for `$routes`
+
 - Restart your IDE/editor
 - Restart TypeScript server
 - Check `tsconfig.json` includes the routes path
 
 ### Styles Not Loading
+
 - Ensure `app.css` is imported in Layout
 - Check Vite is running (`npm run dev`)
 - Clear browser cache
 
 ### 404 Errors
+
 - Ensure Laravel server is running
 - Check route names match Wayfinder output
 - Verify controller methods exist
@@ -452,6 +493,7 @@ php artisan route:clear
 ## Next Steps
 
 ### Suggested Enhancements
+
 1. Add authentication with Laravel Breeze/Jetstream
 2. Implement forms with validation
 3. Add more shadcn components (Dialog, Dropdown, etc.)
@@ -487,7 +529,6 @@ This demo project successfully implements:
 ✅ **Type-safe routing** with full IDE support  
 ✅ **SPA navigation** with Inertia Links  
 ✅ **Props passing** from Laravel controllers  
-✅ **Responsive design** with Tailwind CSS  
+✅ **Responsive design** with Tailwind CSS
 
 The application is ready for development and demonstrates best practices for Laravel + Svelte + Inertia.js applications! 🚀
-

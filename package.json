@@ -11,7 +11,7 @@
         "format:check": "prettier --check ."
     },
     "devDependencies": {
-        "@eslint/js": "^9.39.2",
+        "@eslint/js": "^10.0.1",
         "@internationalized/date": "^3.11.0",
         "@lucide/svelte": "^0.563.1",
         "@sveltejs/vite-plugin-svelte": "^6.2.4",
@@ -20,13 +20,14 @@
         "@tailwindcss/postcss": "^4.1.18",
         "@tailwindcss/vite": "^4.1.18",
         "@tsconfig/svelte": "^5.0.7",
-        "@types/node": "^25.2.1",
-        "@typescript-eslint/eslint-plugin": "^8.54.0",
-        "@typescript-eslint/parser": "^8.54.0",
+        "@types/node": "^25.2.2",
+        "@types/qrcode": "^1.5.6",
+        "@typescript-eslint/eslint-plugin": "^8.55.0",
+        "@typescript-eslint/parser": "^8.55.0",
         "bits-ui": "^2.15.5",
         "clsx": "^2.1.1",
         "concurrently": "^9.2.1",
-        "eslint": "^9.39.2",
+        "eslint": "^10.0.0",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-prettier": "^5.5.5",
         "eslint-plugin-svelte": "^3.14.0",
@@ -37,7 +38,7 @@
         "prettier-plugin-organize-imports": "^4.3.0",
         "prettier-plugin-svelte": "^3.4.1",
         "prettier-plugin-tailwindcss": "^0.7.2",
-        "svelte": "^5.49.2",
+        "svelte": "^5.50.1",
         "svelte-check": "^4.3.6",
         "svelte-eslint-parser": "^1.4.1",
         "svelte-sonner": "^1.0.7",
@@ -52,6 +53,11 @@
     "dependencies": {
         "@inertiajs/svelte": "^2.3.13",
         "@laravel/vite-plugin-wayfinder": "^0.1.7",
-        "@tunbudi06/inertia-route-helper": "^2.0.2"
+        "@tunbudi06/inertia-route-helper": "^2.0.2",
+        "html2canvas": "^1.4.1",
+        "html2canvas-pro": "^1.6.6",
+        "html2pdf.js": "^0.14.0",
+        "jspdf": "^4.1.0",
+        "qrcode": "^1.5.4"
     }
 }

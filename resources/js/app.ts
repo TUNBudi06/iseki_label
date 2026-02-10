@@ -1,13 +1,13 @@
 import { createInertiaApp, type ResolvedComponent } from '@inertiajs/svelte';
+import { initRouteHelper } from '@tunbudi06/inertia-route-helper/init';
 import { hydrate, mount } from 'svelte';
 import './bootstrap';
-import {initRouteHelper} from "@tunbudi06/inertia-route-helper/init";
-
-
 
 createInertiaApp({
     resolve: (name: string) => {
-        const pages = import.meta.glob<ResolvedComponent>('./Pages/**/*.svelte');
+        const pages = import.meta.glob<ResolvedComponent>(
+            './Pages/**/*.svelte',
+        );
         return pages[`./Pages/${name}.svelte`]();
     },
     setup({ el, App, props }) {

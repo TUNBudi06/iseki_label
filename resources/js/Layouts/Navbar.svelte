@@ -7,11 +7,21 @@
     let { children = null } = $props();
 </script>
 
+{#snippet NavMenu(href, label)}
+    <Link
+        {href}
+        class="rounded-lg px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-100 dark:text-white data-[active=true]:bg-pink-300 dark:hover:bg-slate-800"
+        data-active={isCurrentRoute(href, true, true)}
+    >
+        Home
+    </Link>
+{/snippet}
+
 <DefaultLayout>
     <div class="min-h-screen bg-linear-to-br">
         <!-- Navigation -->
         <nav
-            class="border-b border-slate-200 bg-white/80 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/80"
+            class="border-b sticky top-0 border-slate-200 bg-white/80 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/80"
         >
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="flex h-16 items-center justify-between">
@@ -24,28 +34,8 @@
                     </div>
 
                     <div class="flex gap-4">
-                        <Link
-                            href={routeUrl(home())}
-                            class="rounded-lg px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-100 dark:text-white data-[active=true]:bg-slate-300 dark:hover:bg-slate-800"
-                            data-active={isCurrentRoute(
-                                routeUrl(home()),
-                                true,
-                                true,
-                            )}
-                        >
-                            Home
-                        </Link>
-                        <Link
-                            href={routeUrl(about())}
-                            class="rounded-lg data-[active=true]:bg-slate-300 px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-100 dark:text-white dark:hover:bg-slate-800"
-                            data-active={isCurrentRoute(
-                                routeUrl(about()),
-                                true,
-                                true,
-                            )}
-                        >
-                            About
-                        </Link>
+                        {@render NavMenu(routeUrl(home()), 'Home')}
+                        {@render NavMenu(routeUrl(about()), 'About')}
                     </div>
                 </div>
             </div>
@@ -64,7 +54,7 @@
                 <p
                     class="text-center text-sm text-slate-600 dark:text-slate-400"
                 >
-                    © 2024 Demo App. Built with Laravel, Inertia & Svelte.
+                    © 2026 ISEKI LABEL. Built with Laravel, Inertia & Svelte.
                 </p>
             </div>
         </footer>

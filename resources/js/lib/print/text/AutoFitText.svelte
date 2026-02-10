@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
 
-    let { text, maxPt = 12, minPt = 6, class:className = '' } = $props();
+    let { text, maxPt = 12, minPt = 6, class: className = '' } = $props();
     let el: HTMLDivElement = $state();
 
     function fit() {

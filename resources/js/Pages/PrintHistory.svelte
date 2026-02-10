@@ -11,12 +11,11 @@
         Pagination,
     } from '@vincjo/datatables';
     import { onMount } from 'svelte';
-    import {history as UrlHistory} from "$routes/print";
-    import {routeUrl} from "@tunbudi06/inertia-route-helper";
+    import {assetUrl} from "@tunbudi06/inertia-route-helper";
 
     // Sample data - nanti diganti dengan fetch dari API
-    // HANYA data dengan status 'pending' yang ditampilkan di sini
-    interface QueueItem {
+    // HANYA data dengan status 'printed' yang ditampilkan di sini
+    interface HistoryItem {
         id: number;
         rackNo: string;
         requestBy: string;
@@ -24,73 +23,95 @@
         tipe: string;
         status: string;
         createdAt: string;
+        printedAt: string;
+        printedBy: string;
         priority: string;
     }
 
-    let queueData = $state<QueueItem[]>([
+    let historyData = $state<HistoryItem[]>([
         {
-            id: 1,
-            rackNo: 'MM-M001',
-            requestBy: 'John Doe',
-            jumlah: 5,
-            tipe: 'Rack Assy',
-            status: 'pending',
-            createdAt: '2026-02-10 08:30:00',
+            id: 3,
+            rackNo: 'BB-B456',
+            requestBy: 'Bob Wilson',
+            jumlah: 3,
+            tipe: 'Rack Kecil',
+            status: 'printed',
+            createdAt: '2026-02-10 07:45:00',
+            printedAt: '2026-02-10 08:00:00',
+            printedBy: 'Admin User',
             priority: 'normal',
         },
         {
-            id: 2,
-            rackNo: 'AA-A123',
-            requestBy: 'Jane Smith',
-            jumlah: 10,
+            id: 6,
+            rackNo: 'EE-E345',
+            requestBy: 'David Lee',
+            jumlah: 12,
             tipe: 'Pallet Assy',
-            status: 'pending',
-            createdAt: '2026-02-10 09:15:00',
-            priority: 'urgent',
-        },
-        {
-            id: 4,
-            rackNo: 'CC-C789',
-            requestBy: 'Alice Johnson',
-            jumlah: 8,
-            tipe: 'Rack Assy',
-            status: 'pending',
-            createdAt: '2026-02-10 10:20:00',
+            status: 'printed',
+            createdAt: '2026-02-10 06:30:00',
+            printedAt: '2026-02-10 07:15:00',
+            printedBy: 'Admin User',
             priority: 'high',
         },
         {
-            id: 5,
-            rackNo: 'DD-D012',
-            requestBy: 'Charlie Brown',
-            jumlah: 15,
+            id: 7,
+            rackNo: 'FF-F678',
+            requestBy: 'Emma Wilson',
+            jumlah: 7,
+            tipe: 'Rack Assy',
+            status: 'printed',
+            createdAt: '2026-02-10 05:00:00',
+            printedAt: '2026-02-10 06:45:00',
+            printedBy: 'Admin User',
+            priority: 'normal',
+        },
+        {
+            id: 8,
+            rackNo: 'GG-G901',
+            requestBy: 'Frank Miller',
+            jumlah: 20,
             tipe: 'Pallet Assy',
-            status: 'pending',
-            createdAt: '2026-02-10 08:00:00',
+            status: 'printed',
+            createdAt: '2026-02-09 22:30:00',
+            printedAt: '2026-02-10 05:30:00',
+            printedBy: 'Admin User',
+            priority: 'urgent',
+        },
+        {
+            id: 9,
+            rackNo: 'HH-H234',
+            requestBy: 'Grace Taylor',
+            jumlah: 4,
+            tipe: 'Rack Kecil',
+            status: 'printed',
+            createdAt: '2026-02-09 21:00:00',
+            printedAt: '2026-02-10 04:00:00',
+            printedBy: 'Admin User',
             priority: 'normal',
         },
     ]);
 
-    const handler = new TableHandler<QueueItem>([], {
+    const handler = new TableHandler<HistoryItem>([], {
         rowsPerPage: 10,
         highlight: true
     });
     $effect(() => {
-        handler.setRows(queueData);
+        handler.setRows(historyData);
     });
 
+    let searchQuery = handler.createSearch(['rackNo', 'requestBy', 'printedBy']);
     let selectedIds = $state<number[]>([]);
-    let searchQuery = handler.createSearch(['rackNo', 'requestBy']);
-    let isPrinting = $state(false);
+    let isDeleting = $state(false);
 
-    // Untuk statistik, kita perlu fetch dari API
-    // Total hari ini termasuk pending + printed
-    let totalTodayCount = $state(25); // Dari API
-    let printedTodayCount = $state(5); // Dari API
-
-    // Statistics - hanya pending yang ditampilkan di queue
-    let totalToday = $derived(totalTodayCount);
-    let pendingCount = $derived(queueData.length); // Semua data di queue adalah pending
-    let printedCount = $derived(printedTodayCount);
+    // Statistics
+    let totalPrinted = $derived(historyData.length);
+    let printedToday = $derived(
+        historyData.filter(h => {
+            const printDate = new Date(h.printedAt).toDateString();
+            const today = new Date().toDateString();
+            return printDate === today;
+        }).length
+    );
 
     // Toggle select
     function toggleSelect(id: number) {
@@ -103,97 +124,90 @@
 
     // Select all
     function toggleSelectAll() {
-        if (selectedIds.length === pendingCount) {
+        if (selectedIds.length === historyData.length) {
             selectedIds = [];
         } else {
-            selectedIds = queueData.map((q) => q.id); // Semua data adalah pending
+            selectedIds = historyData.map((h) => h.id);
         }
     }
 
-    // Print selected - hapus dari queue setelah print
-    async function printSelected() {
+    // Reprint selected
+    async function reprintSelected() {
         if (selectedIds.length === 0) {
-            alert('Pilih minimal 1 label untuk di-print!');
-            return;
-        }
-
-        isPrinting = true;
-
-        // Simulate printing process
-        console.log('Printing labels:', selectedIds);
-
-        // TODO: Implement actual PDF generation untuk multiple labels
-        // TODO: Send ke API untuk update status ke 'printed'
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        const printedCount = selectedIds.length;
-
-        // Hapus dari queue (karena sudah pindah ke history)
-        queueData = queueData.filter((q) => !selectedIds.includes(q.id));
-
-        // Update printed count
-        printedTodayCount += printedCount;
-
-        selectedIds = [];
-        isPrinting = false;
-        alert(`${printedCount} label berhasil di-print dan dipindahkan ke history!`);
-    }
-
-    // Print all pending
-    async function printAllPending() {
-        if (queueData.length === 0) {
-            alert('Tidak ada label pending untuk di-print!');
+            alert('Pilih minimal 1 label untuk di-reprint!');
             return;
         }
 
         const confirm = window.confirm(
-            `Print semua ${queueData.length} label pending?`,
+            `Reprint ${selectedIds.length} label yang dipilih?`,
         );
         if (!confirm) return;
 
-        selectedIds = queueData.map((q) => q.id);
-        await printSelected();
+        isDeleting = true;
+
+        console.log('Reprinting labels:', selectedIds);
+
+        // TODO: Implement PDF generation untuk reprint
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        selectedIds = [];
+        isDeleting = false;
+        alert('Label berhasil di-reprint!');
     }
 
-    // Print single - hapus dari queue setelah print
-    async function printSingle(id: number) {
-        isPrinting = true;
+    // Reprint single
+    async function reprintSingle(id: number) {
+        isDeleting = true;
 
-        console.log('Printing single label:', id);
+        console.log('Reprinting single label:', id);
 
         // TODO: Implement PDF generation untuk 1 label
-        // TODO: Send ke API untuk update status
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        // Hapus dari queue
-        queueData = queueData.filter((q) => q.id !== id);
-
-        // Update printed count
-        printedTodayCount += 1;
-
-        isPrinting = false;
-        alert('Label berhasil di-print dan dipindahkan ke history!');
+        isDeleting = false;
+        alert('Label berhasil di-reprint!');
     }
 
-    // Delete
-    function deleteItem(id: number) {
-        const confirm = window.confirm('Hapus item ini dari queue?');
+    // Delete from history
+    function deleteFromHistory(id: number) {
+        const confirm = window.confirm('Hapus item ini dari history?');
         if (!confirm) return;
 
-        queueData = queueData.filter((q) => q.id !== id);
+        historyData = historyData.filter((h) => h.id !== id);
         selectedIds = selectedIds.filter((i) => i !== id);
     }
 
-    // Refresh data (fetch only pending from API)
-    async function refreshData() {
-        console.log('Refreshing data...');
-        // TODO: Fetch dari API - hanya ambil yang status 'pending'
-        // const response = await fetch('/api/queue-label-prints?status=pending');
-        // queueData = await response.json();
+    // Delete multiple
+    async function deleteSelected() {
+        if (selectedIds.length === 0) {
+            alert('Pilih minimal 1 item untuk dihapus!');
+            return;
+        }
 
-        // Simulate fetch delay
+        const confirm = window.confirm(
+            `Hapus ${selectedIds.length} item dari history?`,
+        );
+        if (!confirm) return;
+
+        isDeleting = true;
+
+        // TODO: Send ke API untuk delete
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        console.log('Data refreshed.');
+
+        historyData = historyData.filter((h) => !selectedIds.includes(h.id));
+        selectedIds = [];
+        isDeleting = false;
+    }
+
+    // Refresh data
+    async function refreshData() {
+        console.log('Refreshing history data...');
+        // TODO: Fetch dari API - hanya ambil yang status 'printed'
+        // const response = await fetch('/api/queue-label-prints?status=printed');
+        // historyData = await response.json();
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        console.log('History data refreshed.');
     }
 
     onMount(() => {
@@ -205,89 +219,70 @@
 
 <Navbar>
     <div class="container mx-auto p-6 space-y-6">
+
         <!-- Header -->
         <div class="flex items-center justify-between">
             <div>
-                <h1 class="text-3xl font-bold text-pink-900">
-                    Label Print Queue
+                <h1 class="text-3xl font-bold text-green-900">
+                    📜 Print History
                 </h1>
                 <p class="text-gray-600 mt-1">
-                    Manage and print label requests from warehouse system
+                    Riwayat label yang sudah dicetak
                 </p>
             </div>
-            <Button onclick={refreshData} variant="outline" size="sm">
-                🔄 Refresh
-            </Button>
+            <div class="flex gap-2">
+                <Link href={assetUrl('')}>
+                    <Button variant="outline" size="sm">
+                        ← Kembali ke Queue
+                    </Button>
+                </Link>
+                <Button onclick={refreshData} variant="outline" size="sm">
+                    🔄 Refresh
+                </Button>
+            </div>
         </div>
 
         <!-- Statistics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <!-- Total Today -->
-            <Card.Root>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Total Printed Today -->
+            <Card.Root class="border-2 border-green-300">
                 <Card.Content class="p-6">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm text-gray-600 mb-1">
-                                Total Request Hari Ini
-                            </p>
-                            <h3 class="text-3xl font-bold text-pink-900">
-                                {totalToday}
-                            </h3>
-                        </div>
-                        <div
-                            class="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center"
-                        >
-                            <span class="text-2xl">📋</span>
-                        </div>
-                    </div>
-                </Card.Content>
-            </Card.Root>
-
-            <!-- Pending -->
-            <Card.Root class="border-2 border-pink-300">
-                <Card.Content class="p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-gray-600 mb-1">
-                                Pending Print
-                            </p>
-                            <h3 class="text-3xl font-bold text-orange-600">
-                                {pendingCount}
-                            </h3>
-                        </div>
-                        <div
-                            class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center"
-                        >
-                            <span class="text-2xl">⏳</span>
-                        </div>
-                    </div>
-                </Card.Content>
-            </Card.Root>
-
-            <!-- Printed -->
-            <Card.Root>
-                <Card.Content class="p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-gray-600 mb-1">
-                                Sudah Dicetak
+                                Dicetak Hari Ini
                             </p>
                             <h3 class="text-3xl font-bold text-green-600">
-                                {printedCount}
+                                {printedToday}
                             </h3>
                         </div>
                         <div
                             class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center"
                         >
-                            <span class="text-2xl">✅</span>
+                            <span class="text-2xl">📅</span>
                         </div>
                     </div>
-                    <Link
-                        href={routeUrl(UrlHistory())}
-                        class="mt-3 inline-block text-sm text-pink-600 hover:underline font-medium"
-                    >
-                        📜 Lihat History Print Label &rarr;
-                    </Link>
+                </Card.Content>
+            </Card.Root>
+
+            <!-- Total in History -->
+            <Card.Root>
+                <Card.Content class="p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600 mb-1">
+                                Total History
+                            </p>
+                            <h3 class="text-3xl font-bold text-gray-900">
+                                {totalPrinted}
+                            </h3>
+                        </div>
+                        <div
+                            class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center"
+                        >
+                            <span class="text-2xl">📚</span>
+                        </div>
+                    </div>
                 </Card.Content>
             </Card.Root>
         </div>
@@ -302,10 +297,10 @@
                     <div class="w-full md:w-96">
                         <input
                             type="text"
-                            placeholder="🔍 Cari rack no, request by..."
+                            placeholder="🔍 Cari rack no, request by, printed by..."
                             bind:value={searchQuery.value}
                             oninput={() => searchQuery.set()}
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
                     </div>
 
@@ -313,45 +308,44 @@
                     <div class="flex gap-2 flex-wrap items-center">
                         {#if selectedIds.length > 0}
                             <span
-                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-pink-100 text-pink-800"
+                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800"
                             >
                                 {selectedIds.length} selected
                             </span>
                             <Button
-                                onclick={printSelected}
-                                disabled={isPrinting}
+                                onclick={reprintSelected}
+                                disabled={isDeleting}
                                 size="sm"
-                                class="bg-pink-600 hover:bg-pink-700"
+                                class="bg-green-600 hover:bg-green-700"
                             >
-                                {isPrinting
-                                    ? '⏳ Printing...'
-                                    : `🖨️ Print Selected (${selectedIds.length})`}
+                                {isDeleting
+                                    ? '⏳ Processing...'
+                                    : `🖨️ Reprint (${selectedIds.length})`}
+                            </Button>
+                            <Button
+                                onclick={deleteSelected}
+                                disabled={isDeleting}
+                                size="sm"
+                                variant="destructive"
+                            >
+                                {isDeleting
+                                    ? '⏳ Deleting...'
+                                    : `🗑️ Delete (${selectedIds.length})`}
                             </Button>
                         {/if}
-
-                        <Button
-                            onclick={printAllPending}
-                            disabled={isPrinting || pendingCount === 0}
-                            size="sm"
-                            variant="default"
-                        >
-                            {isPrinting
-                                ? '⏳ Printing...'
-                                : `📄 Print All Pending (${pendingCount})`}
-                        </Button>
                     </div>
                 </div>
             </Card.Content>
         </Card.Root>
 
-        <!-- Queue Table -->
+        <!-- History Table -->
         <Card.Root>
             <Card.Header>
                 <Card.Title class="text-xl font-bold flex items-center gap-2">
-                    <span>📝</span> Label Queue List
+                    <span>✅</span> Printed Labels History
                 </Card.Title>
                 <Card.Description>
-                    Daftar request pembuatan label dari sistem warehouse
+                    Daftar label yang sudah berhasil dicetak
                 </Card.Description>
             </Card.Header>
 
@@ -359,14 +353,14 @@
                 <Datatable table={handler}>
                     <Table.Root>
                         <Table.Header>
-                            <Table.Row class="bg-pink-50">
+                            <Table.Row class="bg-green-50">
                                 <Table.Head class="w-12">
                                     <input
                                         type="checkbox"
                                         checked={selectedIds.length ===
-                                            pendingCount && pendingCount > 0}
+                                            totalPrinted && totalPrinted > 0}
                                         onchange={toggleSelectAll}
-                                        class="w-4 h-4 accent-pink-600"
+                                        class="w-4 h-4 accent-green-600"
                                     />
                                 </Table.Head>
                                 <Table.Head class="w-16 text-center"
@@ -379,6 +373,8 @@
                                 >
                                 <Table.Head>Tipe Label</Table.Head>
                                 <Table.Head>Waktu Request</Table.Head>
+                                <Table.Head>Waktu Print</Table.Head>
+                                <Table.Head>Printed By</Table.Head>
                                 <Table.Head class="text-center"
                                     >Actions</Table.Head
                                 >
@@ -387,10 +383,10 @@
                         <Table.Body>
                             {#each handler.rows as item, index (item.id)}
                                 <Table.Row
-                                    class="hover:bg-pink-50 transition-colors {selectedIds.includes(
+                                    class="hover:bg-green-50 transition-colors {selectedIds.includes(
                                         item.id,
                                     )
-                                        ? 'bg-pink-50'
+                                        ? 'bg-green-50'
                                         : ''}"
                                 >
                                     <Table.Cell>
@@ -401,7 +397,7 @@
                                             )}
                                             onchange={() =>
                                                 toggleSelect(item.id)}
-                                            class="w-4 h-4 accent-pink-600"
+                                            class="w-4 h-4 accent-green-600"
                                         />
                                     </Table.Cell>
                                     <Table.Cell
@@ -409,17 +405,17 @@
                                     >
                                         {index + 1}
                                     </Table.Cell>
-                                    <Table.Cell class="font-bold text-pink-900">
+                                    <Table.Cell class="font-bold text-green-900">
                                         {@html item.rackNo}
                                     </Table.Cell>
                                     <Table.Cell>
                                         <div class="flex items-center gap-2">
                                             <span
-                                                class="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center text-xs font-bold text-pink-700"
+                                                class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-xs font-bold text-green-700"
                                             >
                                                 {@html item.requestBy
                                                     .split(' ')
-                                                    .map((n) => n[0])
+                                                    .map((n: string) => n[0])
                                                     .join('')}
                                             </span>
                                             <span>{@html item.requestBy}</span>
@@ -440,23 +436,39 @@
                                             item.createdAt,
                                         ).toLocaleString('id-ID')}
                                     </Table.Cell>
+                                    <Table.Cell class="text-sm">
+                                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                                            ✅ {new Date(
+                                                item.printedAt,
+                                            ).toLocaleString('id-ID', {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                            })}
+                                        </span>
+                                    </Table.Cell>
+                                    <Table.Cell class="text-sm text-gray-600">
+                                        {item.printedBy}
+                                    </Table.Cell>
                                     <Table.Cell>
                                         <div class="flex gap-1 justify-center">
                                             <Button
                                                 onclick={() =>
-                                                    printSingle(item.id)}
-                                                disabled={isPrinting}
+                                                    reprintSingle(item.id)}
+                                                disabled={isDeleting}
                                                 size="sm"
-                                                variant="default"
-                                                class="bg-pink-600 hover:bg-pink-700"
+                                                class="bg-green-600 hover:bg-green-700"
+                                                title="Reprint label ini"
                                             >
                                                 🖨️
                                             </Button>
                                             <Button
                                                 onclick={() =>
-                                                    deleteItem(item.id)}
+                                                    deleteFromHistory(item.id)}
                                                 size="sm"
                                                 variant="destructive"
+                                                title="Hapus dari history"
                                             >
                                                 🗑️
                                             </Button>
@@ -480,32 +492,29 @@
         </Card.Root>
 
         <!-- Info Footer -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
             <div class="flex items-start gap-3">
                 <span class="text-2xl">ℹ️</span>
                 <div>
-                    <h4 class="font-semibold text-blue-900 mb-1">
-                        Cara Menggunakan:
+                    <h4 class="font-semibold text-green-900 mb-1">
+                        Informasi:
                     </h4>
-                    <ul class="text-sm text-blue-800 space-y-1">
+                    <ul class="text-sm text-green-800 space-y-1">
                         <li>
-                            • <strong>Checkbox</strong> - Pilih beberapa label untuk
-                            di-print sekaligus
+                            • <strong>Reprint</strong> - Cetak ulang label yang sudah pernah dicetak
                         </li>
                         <li>
-                            • <strong>Print Selected</strong> - Print label yang dipilih
+                            • <strong>Delete</strong> - Hapus dari history (tidak mempengaruhi data asli)
                         </li>
                         <li>
-                            • <strong>Print All Pending</strong> - Print semua label
-                            yang belum dicetak
-                        </li>
-                        <li>
-                            • <strong>🖨️ Button</strong> - Print 1 label saja
+                            • History akan disimpan untuk audit trail dan tracking
                         </li>
                         <li>• Data akan auto-refresh setiap 30 detik</li>
                     </ul>
                 </div>
             </div>
         </div>
+
     </div>
 </Navbar>
+

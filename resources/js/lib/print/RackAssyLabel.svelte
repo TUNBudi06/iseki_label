@@ -1,7 +1,7 @@
 <script lang="ts">
     import AutoFitText from '$lib/print/text/AutoFitText.svelte';
     import { CircleCheck } from '@lucide/svelte';
-    import QRCodeGen from "$lib/print/QRCodeGen.svelte";
+    import QRCodeGen from '$lib/print/QRCodeGen.svelte';
 
     let {
         rack = 'MM-M008',
@@ -65,7 +65,8 @@
     >
         <div class="border-b border-black w-full">QR Code</div>
         <div class="w-full text-sm row-span-3">
-            <QRCodeGen data={rack} size={10} class="mx-auto w-[24mm] h-[24mm]"></QRCodeGen>
+            <QRCodeGen data={rack} size={10} class="mx-auto w-[24mm] h-[24mm]"
+            ></QRCodeGen>
         </div>
     </div>
     <div

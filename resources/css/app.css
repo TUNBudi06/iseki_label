@@ -22,7 +22,6 @@
     --popover: #ffffff; /* White popover */
     --popover-foreground: #1a1a1a; /* Hitam text */
 
-
     /* MERAH MUDA VIBRANT untuk elemen penting (button, navbar, sidebar) */
     --primary: #e84c89; /* Vibrant pink - lebih saturated */
     --primary-foreground: #ffffff; /* Putih text */
@@ -190,4 +189,17 @@
     body {
         background: white;
     }
+}
+
+@keyframes shine {
+    from {
+        background-position: 0 0;
+    }
+    to {
+        background-position: -200% 0;
+    }
+}
+
+.animate-shine {
+    animation: shine 2s linear infinite;
 }

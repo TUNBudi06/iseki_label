@@ -1,15 +1,14 @@
 <script lang="ts">
-    let { items, component: Component, cols = 2, gapMm = 6 } = $props();
+    import {cn} from "$shadcn/utils.ts";
+
+    let { children,class: className = '',ref = $bindable()} = $props();
+    const defaultClass = "relative font-mono bg-white border-[1.6px] border-black w-[210mm] h-[297mm] box-border flex flex-col"
+
+    let stylingClass = $derived(cn(defaultClass, className ));
 </script>
 
-<div
-    class="grid"
-    style="
-		grid-template-columns: repeat({cols}, max-content);
-		gap: {gapMm}mm;
-	"
+<div bind:this={ref}
+    class={stylingClass}
 >
-    {#each items as item}
-        <Component data={item} />
-    {/each}
+    {@render children?.()}
 </div>

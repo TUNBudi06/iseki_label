@@ -14,6 +14,7 @@
     import {history as UrlHistory} from "$routes/print";
     import {buildRoute, routeUrl} from "@tunbudi06/inertia-route-helper";
     import {router} from "@inertiajs/core";
+    import {toast} from "svelte-sonner";
 
     // Interface matching backend data structure
     interface QueueItem {
@@ -168,6 +169,7 @@
             only: ['labelNotPrinted', 'totalLabelToday', 'totalLabelPrinted'],
             preserveScroll: true,
         });
+        toast.info('Data refreshed', {duration: 2000});
     }
 
     // Helper function to get user initials

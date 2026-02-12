@@ -21,5 +21,7 @@ class QueueLabelPrint extends Model
         'quantity',
         'requested_by',
         'area_name',
+        'printed',
+        'urgent',
     ];
 }

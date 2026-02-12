@@ -11,8 +11,8 @@
         Pagination,
     } from '@vincjo/datatables';
     import { onMount } from 'svelte';
-    import {history as UrlHistory} from "$routes/print";
-    import {buildRoute, routeUrl} from "@tunbudi06/inertia-route-helper";
+    import {history as UrlHistory, label} from "$routes/print";
+    import {routeUrl} from "@tunbudi06/inertia-route-helper";
     import {router} from "@inertiajs/core";
     import {toast} from "svelte-sonner";
 
@@ -91,11 +91,11 @@
                 return handler.rows[item].id
             });
 
-            console.log(buildRoute('/test',{
+            router.visit(routeUrl(label({
                 query: {
                     labels: JSON.stringify(selectedRackCodes)
                 }
-            }))
+            })));
 
             await new Promise((resolve) => setTimeout(resolve, 2000));
 

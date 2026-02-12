@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../
 /**
 * @see \App\Http\Controllers\HomeController::home
  * @see app/Http/Controllers/HomeController.php:15
- * @route '/'
+ * @route '/home'
  */
 export const home = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: home.url(options),
@@ -11,13 +11,13 @@ export const home = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 home.definition = {
     methods: ["get","head"],
-    url: '/',
+    url: '/home',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\HomeController::home
  * @see app/Http/Controllers/HomeController.php:15
- * @route '/'
+ * @route '/home'
  */
 home.url = (options?: RouteQueryOptions) => {
     return home.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ home.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\HomeController::home
  * @see app/Http/Controllers/HomeController.php:15
- * @route '/'
+ * @route '/home'
  */
 home.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: home.url(options),
@@ -35,7 +35,7 @@ home.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\HomeController::home
  * @see app/Http/Controllers/HomeController.php:15
- * @route '/'
+ * @route '/home'
  */
 home.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: home.url(options),
@@ -45,7 +45,7 @@ home.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \App\Http\Controllers\AboutController::about
  * @see app/Http/Controllers/AboutController.php:13
- * @route '/about'
+ * @route '/home/about'
  */
 export const about = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: about.url(options),
@@ -54,13 +54,13 @@ export const about = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 about.definition = {
     methods: ["get","head"],
-    url: '/about',
+    url: '/home/about',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\AboutController::about
  * @see app/Http/Controllers/AboutController.php:13
- * @route '/about'
+ * @route '/home/about'
  */
 about.url = (options?: RouteQueryOptions) => {
     return about.definition.url + queryParams(options)
@@ -69,7 +69,7 @@ about.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\AboutController::about
  * @see app/Http/Controllers/AboutController.php:13
- * @route '/about'
+ * @route '/home/about'
  */
 about.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: about.url(options),
@@ -78,7 +78,7 @@ about.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\AboutController::about
  * @see app/Http/Controllers/AboutController.php:13
- * @route '/about'
+ * @route '/home/about'
  */
 about.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: about.url(options),

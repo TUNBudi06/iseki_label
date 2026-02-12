@@ -11,9 +11,9 @@
     <Link
         {href}
         class="rounded-lg px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-100 dark:text-white data-[active=true]:bg-pink-300 dark:hover:bg-slate-800"
-        data-active={isCurrentRoute(href, true, true)}
+        data-active={isCurrentRoute(href, true, false)}
     >
-        Home
+        {label}
     </Link>
 {/snippet}
 

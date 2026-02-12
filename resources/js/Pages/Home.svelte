@@ -12,63 +12,33 @@
     } from '@vincjo/datatables';
     import { onMount } from 'svelte';
     import {history as UrlHistory} from "$routes/print";
-    import {routeUrl} from "@tunbudi06/inertia-route-helper";
+    import {buildRoute, routeUrl} from "@tunbudi06/inertia-route-helper";
+    import {router} from "@inertiajs/core";
 
-    // Sample data - nanti diganti dengan fetch dari API
-    // HANYA data dengan status 'pending' yang ditampilkan di sini
+    // Interface matching backend data structure
     interface QueueItem {
-        id: number;
-        rackNo: string;
-        requestBy: string;
-        jumlah: number;
-        tipe: string;
-        status: string;
-        createdAt: string;
-        priority: string;
+        rack_code: string;
+        label_type: 'kecil' | 'besar' | 'pallet';
+        quantity: number;
+        requested_by: string;
+        area_name: string;
+        printed: boolean;
+        urgent: boolean;
+        created_at: string;
+        updated_at: string;
+        rack_list?: any; // RackPartList relationship
     }
 
-    let queueData = $state<QueueItem[]>([
-        {
-            id: 1,
-            rackNo: 'MM-M001',
-            requestBy: 'John Doe',
-            jumlah: 5,
-            tipe: 'Rack Assy',
-            status: 'pending',
-            createdAt: '2026-02-10 08:30:00',
-            priority: 'normal',
-        },
-        {
-            id: 2,
-            rackNo: 'AA-A123',
-            requestBy: 'Jane Smith',
-            jumlah: 10,
-            tipe: 'Pallet Assy',
-            status: 'pending',
-            createdAt: '2026-02-10 09:15:00',
-            priority: 'urgent',
-        },
-        {
-            id: 4,
-            rackNo: 'CC-C789',
-            requestBy: 'Alice Johnson',
-            jumlah: 8,
-            tipe: 'Rack Assy',
-            status: 'pending',
-            createdAt: '2026-02-10 10:20:00',
-            priority: 'high',
-        },
-        {
-            id: 5,
-            rackNo: 'DD-D012',
-            requestBy: 'Charlie Brown',
-            jumlah: 15,
-            tipe: 'Pallet Assy',
-            status: 'pending',
-            createdAt: '2026-02-10 08:00:00',
-            priority: 'normal',
-        },
-    ]);
+    // Props from backend
+    let { labelNotPrinted = [], totalLabelToday = 0, totalLabelPrinted = 0 } = $props<{
+        labelNotPrinted?: QueueItem[];
+        totalLabelToday?: number;
+        totalLabelPrinted?: number;
+    }>();
+
+    // Initialize local state from props - we intentionally capture initial value
+    // because we'll be modifying this locally (remove items when printed/deleted)
+    let queueData = $state<QueueItem[]>([...labelNotPrinted]);
 
     const handler = new TableHandler<QueueItem>([], {
         rowsPerPage: 10,
@@ -78,65 +48,65 @@
         handler.setRows(queueData);
     });
 
-    let selectedIds = $state<number[]>([]);
-    let searchQuery = handler.createSearch(['rackNo', 'requestBy']);
+    let selectedIndexes = $state<number[]>([]); // Use index as identifier
+    let searchQuery = handler.createSearch(['rack_code', 'requested_by', 'area_name']);
     let isPrinting = $state(false);
 
-    // Untuk statistik, kita perlu fetch dari API
-    // Total hari ini termasuk pending + printed
-    let totalTodayCount = $state(25); // Dari API
-    let printedTodayCount = $state(5); // Dari API
+    // Statistics from props
+    let totalToday = $derived(totalLabelToday);
+    let pendingCount = $derived(queueData.length); // All data in queue are not printed
+    let printedCount = $derived(totalLabelPrinted);
 
-    // Statistics - hanya pending yang ditampilkan di queue
-    let totalToday = $derived(totalTodayCount);
-    let pendingCount = $derived(queueData.length); // Semua data di queue adalah pending
-    let printedCount = $derived(printedTodayCount);
-
-    // Toggle select
-    function toggleSelect(id: number) {
-        if (selectedIds.includes(id)) {
-            selectedIds = selectedIds.filter((i) => i !== id);
+    // Toggle select by index
+    function toggleSelect(index: number) {
+        if (selectedIndexes.includes(index)) {
+            selectedIndexes = selectedIndexes.filter((i) => i !== index);
         } else {
-            selectedIds = [...selectedIds, id];
+            selectedIndexes = [...selectedIndexes, index];
         }
     }
 
     // Select all
     function toggleSelectAll() {
-        if (selectedIds.length === pendingCount) {
-            selectedIds = [];
+        if (selectedIndexes.length === pendingCount) {
+            selectedIndexes = [];
         } else {
-            selectedIds = queueData.map((q) => q.id); // Semua data adalah pending
+            selectedIndexes = handler.rows.map((_, idx) => idx);
         }
     }
 
-    // Print selected - hapus dari queue setelah print
+    // Print selected - update backend and refresh
     async function printSelected() {
-        if (selectedIds.length === 0) {
+        if (selectedIndexes.length === 0) {
             alert('Pilih minimal 1 label untuk di-print!');
             return;
         }
 
         isPrinting = true;
 
-        // Simulate printing process
-        console.log('Printing labels:', selectedIds);
+        try {
+            // Get rack_codes for selected indexes
+            const selectedRackCodes = selectedIndexes.map((item) => {
+                return handler.rows[item].id
+            });
 
-        // TODO: Implement actual PDF generation untuk multiple labels
-        // TODO: Send ke API untuk update status ke 'printed'
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+            console.log(buildRoute('/test',{
+                query: {
+                    labels: JSON.stringify(selectedRackCodes)
+                }
+            }))
 
-        const printedCount = selectedIds.length;
+            await new Promise((resolve) => setTimeout(resolve, 2000));
 
-        // Hapus dari queue (karena sudah pindah ke history)
-        queueData = queueData.filter((q) => !selectedIds.includes(q.id));
+            const printedCount = selectedIndexes.length;
 
-        // Update printed count
-        printedTodayCount += printedCount;
-
-        selectedIds = [];
-        isPrinting = false;
-        alert(`${printedCount} label berhasil di-print dan dipindahkan ke history!`);
+            await refreshData()
+        } catch (error) {
+            console.error('Print failed:', error);
+            alert('Gagal print label. Silakan coba lagi.');
+        } finally {
+            isPrinting = false;
+        }
     }
 
     // Print all pending
@@ -151,49 +121,58 @@
         );
         if (!confirm) return;
 
-        selectedIds = queueData.map((q) => q.id);
+        selectedIndexes = handler.rows.map((_, idx) => idx);
         await printSelected();
     }
 
-    // Print single - hapus dari queue setelah print
-    async function printSingle(id: number) {
+    // Print single by index
+    async function printSingle(index: number) {
         isPrinting = true;
 
-        console.log('Printing single label:', id);
+        try {
+            const rack_code = handler.rows[index].rack_code;
+            console.log('Printing single label:', rack_code);
 
-        // TODO: Implement PDF generation untuk 1 label
-        // TODO: Send ke API untuk update status
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+            // TODO: Send to backend API
+            // await fetch(`/api/queue-label-prints/${rack_code}/print`, {
+            //     method: 'POST'
+            // });
 
-        // Hapus dari queue
-        queueData = queueData.filter((q) => q.id !== id);
+            await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        // Update printed count
-        printedTodayCount += 1;
+            // Remove from queue
+            queueData = queueData.filter((_, idx) => idx !== index);
 
-        isPrinting = false;
-        alert('Label berhasil di-print dan dipindahkan ke history!');
+            alert('Label berhasil di-print!');
+        } catch (error) {
+            console.error('Print failed:', error);
+            alert('Gagal print label. Silakan coba lagi.');
+        } finally {
+            isPrinting = false;
+        }
     }
 
-    // Delete
-    function deleteItem(id: number) {
+    // Delete by index
+    function deleteItem(index: number) {
         const confirm = window.confirm('Hapus item ini dari queue?');
         if (!confirm) return;
 
-        queueData = queueData.filter((q) => q.id !== id);
-        selectedIds = selectedIds.filter((i) => i !== id);
+        queueData = queueData.filter((_, idx) => idx !== index);
+        selectedIndexes = selectedIndexes.filter((i) => i !== index);
     }
 
-    // Refresh data (fetch only pending from API)
+    // Refresh data from backend
     async function refreshData() {
         console.log('Refreshing data...');
-        // TODO: Fetch dari API - hanya ambil yang status 'pending'
-        // const response = await fetch('/api/queue-label-prints?status=pending');
-        // queueData = await response.json();
+        router.reload({
+            only: ['labelNotPrinted', 'totalLabelToday', 'totalLabelPrinted'],
+            preserveScroll: true,
+        });
+    }
 
-        // Simulate fetch delay
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        console.log('Data refreshed.');
+    // Helper function to get user initials
+    function getInitials(name: string): string {
+        return name.split(' ',2).map(n => n[0]).join('').toUpperCase();
     }
 
     onMount(() => {
@@ -311,11 +290,11 @@
 
                     <!-- Action Buttons -->
                     <div class="flex gap-2 flex-wrap items-center">
-                        {#if selectedIds.length > 0}
+                        {#if selectedIndexes.length > 0}
                             <span
                                 class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-pink-100 text-pink-800"
                             >
-                                {selectedIds.length} selected
+                                {selectedIndexes.length} selected
                             </span>
                             <Button
                                 onclick={printSelected}
@@ -325,7 +304,7 @@
                             >
                                 {isPrinting
                                     ? '⏳ Printing...'
-                                    : `🖨️ Print Selected (${selectedIds.length})`}
+                                    : `🖨️ Print Selected (${selectedIndexes.length})`}
                             </Button>
                         {/if}
 
@@ -363,7 +342,7 @@
                                 <Table.Head class="w-12">
                                     <input
                                         type="checkbox"
-                                        checked={selectedIds.length ===
+                                        checked={selectedIndexes.length ===
                                             pendingCount && pendingCount > 0}
                                         onchange={toggleSelectAll}
                                         class="w-4 h-4 accent-pink-600"
@@ -372,35 +351,32 @@
                                 <Table.Head class="w-16 text-center"
                                     >#</Table.Head
                                 >
-                                <Table.Head>Rack No</Table.Head>
+                                <Table.Head>Rack Code</Table.Head>
                                 <Table.Head>Request By</Table.Head>
+                                <Table.Head>Area Name</Table.Head>
                                 <Table.Head class="text-center"
-                                    >Jumlah</Table.Head
+                                    >Quantity</Table.Head
                                 >
-                                <Table.Head>Tipe Label</Table.Head>
-                                <Table.Head>Waktu Request</Table.Head>
+                                <Table.Head>Label Type</Table.Head>
+                                <Table.Head class="text-center">Priority</Table.Head>
+                                <Table.Head>Created At</Table.Head>
                                 <Table.Head class="text-center"
                                     >Actions</Table.Head
                                 >
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
-                            {#each handler.rows as item, index (item.id)}
+                            {#each handler.rows as item, index (index)}
                                 <Table.Row
-                                    class="hover:bg-pink-50 transition-colors {selectedIds.includes(
-                                        item.id,
-                                    )
+                                    class="hover:bg-pink-50 transition-colors {selectedIndexes.includes(index)
                                         ? 'bg-pink-50'
-                                        : ''}"
+                                        : ''} {item.urgent ? 'border-l-4 border-l-red-500' : ''}"
                                 >
                                     <Table.Cell>
                                         <input
                                             type="checkbox"
-                                            checked={selectedIds.includes(
-                                                item.id,
-                                            )}
-                                            onchange={() =>
-                                                toggleSelect(item.id)}
+                                            checked={selectedIndexes.includes(index)}
+                                            onchange={() => toggleSelect(index)}
                                             class="w-4 h-4 accent-pink-600"
                                         />
                                     </Table.Cell>
@@ -410,41 +386,60 @@
                                         {index + 1}
                                     </Table.Cell>
                                     <Table.Cell class="font-bold text-pink-900">
-                                        {@html item.rackNo}
+                                        {item.rack_code}
                                     </Table.Cell>
                                     <Table.Cell>
                                         <div class="flex items-center gap-2">
                                             <span
                                                 class="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center text-xs font-bold text-pink-700"
                                             >
-                                                {@html item.requestBy
-                                                    .split(' ')
-                                                    .map((n) => n[0])
-                                                    .join('')}
+                                                {getInitials(item.requested_by)}
                                             </span>
-                                            <span>{@html item.requestBy}</span>
+                                            <span>{item.requested_by}</span>
                                         </div>
+                                    </Table.Cell>
+                                    <Table.Cell>
+                                        <span class="text-sm">{item.area_name || '-'}</span>
                                     </Table.Cell>
                                     <Table.Cell class="text-center">
                                         <span
                                             class="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-gray-200 text-gray-800"
                                         >
-                                            {item.jumlah}x
+                                            {item.quantity}x
                                         </span>
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <span class="text-sm">{item.tipe}</span>
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                                            {item.label_type === 'pallet' ? 'bg-purple-100 text-purple-800' :
+                                             item.label_type === 'besar' ? 'bg-blue-100 text-blue-800' :
+                                             'bg-green-100 text-green-800'}">
+                                            {item.label_type.toUpperCase()}
+                                        </span>
+                                    </Table.Cell>
+                                    <Table.Cell class="text-center">
+                                        {#if item.urgent}
+                                            <span
+                                                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 animate-pulse"
+                                            >
+                                                🔥 URGENT
+                                            </span>
+                                        {:else}
+                                            <span
+                                                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600"
+                                            >
+                                                Normal
+                                            </span>
+                                        {/if}
                                     </Table.Cell>
                                     <Table.Cell class="text-sm text-gray-600">
                                         {new Date(
-                                            item.createdAt,
+                                            item.created_at,
                                         ).toLocaleString('id-ID')}
                                     </Table.Cell>
                                     <Table.Cell>
                                         <div class="flex gap-1 justify-center">
                                             <Button
-                                                onclick={() =>
-                                                    printSingle(item.id)}
+                                                onclick={() => printSingle(index)}
                                                 disabled={isPrinting}
                                                 size="sm"
                                                 variant="default"
@@ -453,8 +448,7 @@
                                                 🖨️
                                             </Button>
                                             <Button
-                                                onclick={() =>
-                                                    deleteItem(item.id)}
+                                                onclick={() => deleteItem(index)}
                                                 size="sm"
                                                 variant="destructive"
                                             >

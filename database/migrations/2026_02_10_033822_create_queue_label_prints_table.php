@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('queue_label_prints', function (Blueprint $table) {
+            $table->id();
             $table->string('rack_code', 50);
             $table->enum('label_type', ['kecil','besar','pallet'])->default('besar');
             $table->integer('quantity')->default(1);

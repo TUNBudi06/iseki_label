@@ -9,11 +9,6 @@ class QueueLabelPrint extends Model
     // Define the table associated with the model
     protected $table = 'queue_label_prints';
 
-    // Dont use id incrementing
-    public $incrementing = false;
-    // Define the primary key
-    protected $primaryKey = 'rack_code';
-
     // Define the fillable attributes
     protected $fillable = [
         'rack_code',
@@ -24,4 +19,15 @@ class QueueLabelPrint extends Model
         'printed',
         'urgent',
     ];
+
+
+    function getUrgentStatusAttribute()
+    {
+        return $this->urgent ? 'Yes' : 'No';
+    }
+
+    function RackList()
+    {
+        return $this->belongsTo(RackPartList::class, 'rack_code', 'rack_no');
+    }
 }

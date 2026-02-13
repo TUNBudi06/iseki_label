@@ -7,9 +7,6 @@
         rack = 'MM-M008',
         code = '18326112102D',
         name = 'LABEL/CONTROL/SUB',
-        type = 'SXG324-SXG327/NT554/NT548/MF1650/MF1GC ALL/TXGS24FZJL1/NT540/NT536/NT542/MF1640/TLE3410 ALL/MF1741/TLE4550/MF1756/MF2E ALL/TXGS24 ALL/SXG216/MF1E ALL',
-        timbangan = 'Non Timbangan',
-        vendor = 'Kakihara Meiban(Thai) CO., LTD',
     } = $props();
 
     let codeParser = $derived(formatCode10(code));

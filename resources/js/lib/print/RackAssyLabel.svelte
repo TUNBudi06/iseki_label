@@ -35,15 +35,15 @@
         class="flex flex-col font-bold text-lg text-center w-[86mm] border-r border-black justify-center items-center box-border"
     >
         <h2
-            class="border-b-2 font-sans text-xl text-blue-700 tracking-widest w-full"
+            class="border-b-2 font-sans font-bold text-xl text-blue-700 tracking-widest w-full"
         >
             {rack}
         </h2>
         <h2 class="border-b-2 font-serif text-red-500 w-full">{codeParser}</h2>
-        <h2 class="border-b-2 text-xs font-normal font-sans w-full">
+        <h2 class="border-b-2 text-xs font-normal text-orange-300 font-sans w-full">
             <AutoFitText minPt={1} text={name} />
         </h2>
-        <h2 class="border-b-2 w-full text-xs m-y-1">
+        <h2 class="border-b-2 w-full font-normal tracking-tighter font-sans text-xs m-y-1">
             <AutoFitText minPt={1} text={type} />
         </h2>
     </div>
@@ -52,7 +52,7 @@
     >
         <div class="border-b border-black w-full">Remark</div>
         <div class="border-b-2 w-full font-sans font-normal tracking-tight">
-            <AutoFitText minPt={1} text={timbangan} />
+            <AutoFitText minPt={1} text={timbangan ?? ''} />
         </div>
         <div
             class="w-full text-sm font-normal font-sans row-span-2 tracking-tighter"
@@ -65,8 +65,7 @@
     >
         <div class="border-b border-black w-full">QR Code</div>
         <div class="w-full text-sm row-span-3">
-            <QRCodeGen data={rack} size={10} class="mx-auto w-[24mm] h-[24mm]"
-            ></QRCodeGen>
+            <QRCodeGen data={rack} size={10} class="mx-auto w-[24mm] h-[24mm]" />
         </div>
     </div>
     <div

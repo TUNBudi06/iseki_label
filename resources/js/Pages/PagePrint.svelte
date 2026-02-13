@@ -41,7 +41,7 @@
         };
     });
 
-    const smallLabel = 20;
+    const smallLabel = 26;
     const assyLabel = 6;
     const palletLabel = 2;
 
@@ -204,8 +204,8 @@
                                     >
                                         {#each sheet.labels as label (label.id)}
                                             <div class="border-b last:border-0 p-2 hover:bg-gray-50 cursor-move transition-colors">
-                                                <p class="text-sm font-semibold text-blue-600">#{label.id}</p>
-                                                <p class="text-xs"><strong>Rack:</strong> {label.rack_code}</p>
+                                                <p class="text-sm font-semibold text-blue-600">{label.rack_code}</p>
+                                                <p class="text-xs"><strong>Tipe:</strong> {label.label_type} </p>
                                                 <p class="text-xs"><strong>Item:</strong> {label.item_code}</p>
                                             </div>
                                         {/each}
@@ -227,7 +227,7 @@
             </Card.Header>
             <Card.Content>
                 <div class="w-full h-full">
-                    <RenderEngine {allSheets} ids={idsPrint} />
+                    <RenderEngine sheets={allSheets} ids={idsPrint} />
                 </div>
             </Card.Content>
         </Card.Root>

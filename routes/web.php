@@ -18,3 +18,7 @@ Route::prefix('home')->group(function () {
     })->name('print.history');
     Route::get('/print-label',[\App\Http\Controllers\PagePrintController::class,'index'])->name('print.label');
 });
+
+Route::get('multi-page',function(){
+    return Inertia::render('test/MultiPageExample');
+});

@@ -3,6 +3,7 @@
     import Navbar from "$/Layouts/Navbar.svelte";
     import * as Card from "$shadcn/components/ui/card/index.js";
     import {dndzone, type DndEvent} from "svelte-dnd-action";
+    import RenderEngine from "$lib/print/RenderEngine.svelte";
 
     // Define the props interface
     interface PagePrintProps {
@@ -40,7 +41,7 @@
         };
     });
 
-    const smallLabel = 10;
+    const smallLabel = 20;
     const assyLabel = 6;
     const palletLabel = 2;
 
@@ -132,90 +133,103 @@
 
     // Delete a page
     function deletePage(pageIdx: number) {
-        if (confirm(`Delete Page ${pageIdx + 1}?`)) {
-            allSheets = allSheets.filter((_, idx) => idx !== pageIdx);
-        }
+        allSheets = allSheets.filter((_, idx) => idx !== pageIdx);
     }
-    $inspect(allSheets)
 
 </script>
 
 
 <Navbar>
-    <Card.Root>
-        <Card.Title class="text-center mt-4">Daftar Label untuk Dicetak</Card.Title>
-        <Card.Description class="text-center mb-4">
-            Seret dan lepas untuk mengatur ulang urutan pencetakan label.
-        </Card.Description>
-        <Card.Content>
-            <div class="w-full">
-                <div class="flex gap-3 items-center justify-center my-4 flex-wrap">
-                    <Button>Print Now</Button>
-                    <span class="text-sm text-gray-600">Total Sheets: {sheetCount}</span>
+    <div class="space-y-6">
+        <Card.Root>
+            <Card.Header>
+                <Card.Title class="text-center mt-4">Daftar Label untuk Dicetak</Card.Title>
+                <Card.Description class="text-center mb-4">
+                    Seret dan lepas untuk mengatur ulang urutan pencetakan label.
+                </Card.Description>
+            </Card.Header>
+            <Card.Content>
+                <div class="w-full">
+                    <div class="flex gap-3 items-center justify-center my-4 flex-wrap">
+                        <Button>Print Now</Button>
+                        <span class="text-sm text-gray-600">Total Sheets: {sheetCount}</span>
 
-                    <div class="flex gap-2 items-center border-l pl-3 ml-3">
-                        <label for="pageType" class="text-sm font-medium">New Page Type:</label>
-                        <select
-                            id="pageType"
-                            bind:value={newPageType}
-                            class="border border-gray-300 rounded px-2 py-1 text-sm"
-                        >
-                            <option value="kecil">Kecil (10 labels)</option>
-                            <option value="besar">Besar (6 labels)</option>
-                            <option value="pallet">Pallet (2 labels)</option>
-                        </select>
-                        <Button onclick={addNewPage} variant="outline" size="sm">
-                            ➕ Add Page
-                        </Button>
+                        <div class="flex gap-2 items-center border-l pl-3 ml-3">
+                            <label for="pageType" class="text-sm font-medium">New Page Type:</label>
+                            <select
+                                id="pageType"
+                                bind:value={newPageType}
+                                class="border border-gray-300 rounded px-2 py-1 text-sm"
+                            >
+                                <option value="kecil">Kecil (10 labels)</option>
+                                <option value="besar">Besar (6 labels)</option>
+                                <option value="pallet">Pallet (2 labels)</option>
+                            </select>
+                            <Button onclick={addNewPage} variant="outline" size="sm">
+                                ➕ Add Page
+                            </Button>
+                        </div>
                     </div>
-                </div>
-                <div class="space-y-4">
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-10">
-                        {#each allSheets as sheet, pageIdx}
-                            <div class="border-2 border-gray-300 p-3 bg-white rounded-lg shadow-md">
-                                <div class="mb-2 pb-2 border-b-2 border-gray-200 flex justify-between items-start">
-                                    <div class="flex-1">
-                                        <h3 class="font-bold text-center text-sm">
-                                            Page {pageIdx + 1} - {sheet.type.toUpperCase()}
-                                        </h3>
-                                        <p class="text-xs text-center text-gray-600">
-                                            {sheet.labels.length}/{sheet.maxPerPage} labels
-                                        </p>
-                                    </div>
-                                    <button
-                                        onclick={() => deletePage(pageIdx)}
-                                        class="text-red-500 hover:text-red-700 text-xs px-2 py-1 hover:bg-red-50 rounded transition-colors"
-                                        title="Delete this page"
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-                                <div
-                                    use:dndzone={{
-                            items: sheet.labels,
-                            flipDurationMs: 300,
-                            type: 'label-dndzone',
-                            dropFromOthersDisabled: false
-                        }}
-                                    onconsider={handleDndConsider(pageIdx)}
-                                    onfinalize={handleDndFinalize(pageIdx)}
-                                    class="min-h-25 min-w-full"
-                                >
-                                    {#each sheet.labels as label (label.id)}
-                                        <div class="border-b last:border-0 p-2 hover:bg-gray-50 cursor-move transition-colors">
-                                            <p class="text-sm font-semibold text-blue-600">#{label.id}</p>
-                                            <p class="text-xs"><strong>Rack:</strong> {label.rack_code}</p>
-                                            <p class="text-xs"><strong>Item:</strong> {label.item_code}</p>
-                                            <p class="text-xs"><strong>Name:</strong> {label.item_name}</p>
-                                            <p class="text-xs"><strong>Vendor:</strong> {label.vendor}</p>
+                    <div class="space-y-4">
+                        <div class="grid md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-10">
+                            {#each allSheets as sheet, pageIdx}
+                                <div class="border-2 border-gray-300 p-3 bg-white rounded-lg shadow-md">
+                                    <div class="mb-2 pb-2 border-b-2 border-gray-200 flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <h3 class="font-bold text-center text-sm">
+                                                Page {pageIdx + 1} - {sheet.type.toUpperCase()}
+                                            </h3>
+                                            <p class="text-xs text-center text-gray-600">
+                                                {sheet.labels.length}/{sheet.maxPerPage} labels
+                                            </p>
                                         </div>
-                                    {/each}
+                                        <button
+                                            onclick={() => deletePage(pageIdx)}
+                                            class="text-red-500 hover:text-red-700 text-xs px-2 py-1 hover:bg-red-50 rounded transition-colors"
+                                            title="Delete this page"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                    <div
+                                        use:dndzone={{
+                                            items: sheet.labels,
+                                            flipDurationMs: 300,
+                                            type: 'label-dndzone',
+                                            dropFromOthersDisabled: false
+                                        }}
+                                        onconsider={handleDndConsider(pageIdx)}
+                                        onfinalize={handleDndFinalize(pageIdx)}
+                                        class="min-h-50 max-h-100 overflow-y-auto min-w-full"
+                                    >
+                                        {#each sheet.labels as label (label.id)}
+                                            <div class="border-b last:border-0 p-2 hover:bg-gray-50 cursor-move transition-colors">
+                                                <p class="text-sm font-semibold text-blue-600">#{label.id}</p>
+                                                <p class="text-xs"><strong>Rack:</strong> {label.rack_code}</p>
+                                                <p class="text-xs"><strong>Item:</strong> {label.item_code}</p>
+                                            </div>
+                                        {/each}
+                                    </div>
                                 </div>
-                            </div>
-                        {/each}
+                            {/each}
+                        </div>
                     </div>
                 </div>
-            </div>
-        </Card.Content>
-    </Card.Root>
+            </Card.Content>
+        </Card.Root>
+
+        <Card.Root>
+            <Card.Header>
+                <Card.Title class="text-center mt-4 text-xl font-bold">Render Label</Card.Title>
+                <Card.Description class="text-center mb-4">
+                    Rendering view for Label Print (to be implemented)
+                </Card.Description>
+            </Card.Header>
+            <Card.Content>
+                <div class="w-full h-full">
+                    <RenderEngine {allSheets} ids={idsPrint} />
+                </div>
+            </Card.Content>
+        </Card.Root>
+    </div>
 </Navbar>

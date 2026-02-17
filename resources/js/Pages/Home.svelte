@@ -33,17 +33,23 @@
     }
 
     // Props from backend
-    let { labelNotPrinted = [], totalLabelToday = 0, totalLabelPrinted = 0 } = $props<{
-        labelNotPrinted?: QueueItem[];
-        totalLabelToday?: number;
-        totalLabelPrinted?: number;
-    }>();
+    let { labelNotPrinted = [], totalLabelToday = 0, totalLabelPrinted = 0 } = $props();
 
-    // Initialize local state from props - we intentionally capture initial value
-    // because we'll be modifying this locally (remove items when printed/deleted)
+    // Initialize local state from props - create a PLAIN ARRAY COPY
+    // Backend sends object with numeric keys like {1: {...}, 2: {...}}, convert to array
     let queueData = $derived.by(function () {
-        let qdata = labelNotPrinted || [];
-        return qdata as QueueItem[];
+        if (!labelNotPrinted) {
+            return [];
+        }
+        // If it's already an array, use it
+        if (Array.isArray(labelNotPrinted)) {
+            return [...labelNotPrinted];
+        }
+        // If it's an object (like {1: {...}, 2: {...}}), convert to array
+        if (typeof labelNotPrinted === 'object') {
+            return Object.values(labelNotPrinted);
+        }
+        return [];
     });
 
     const handler = new TableHandler<QueueItem>([], {
@@ -51,7 +57,13 @@
         highlight: true
     });
     $effect(() => {
+        console.log('🔍 queueData:', queueData);
+        console.log('🔍 queueData is array?', Array.isArray(queueData));
+        console.log('🔍 queueData length:', queueData?.length);
+        console.log('🔍 labelNotPrinted:', labelNotPrinted);
         handler.setRows(queueData);
+        console.log('✅ handler.rows after setRows:', handler.rows);
+        console.log('✅ handler.allRows:', handler.allRows);
     });
 
     let selectedIndexes = $state<number[]>([]); // Use index as identifier

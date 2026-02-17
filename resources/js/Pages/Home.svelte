@@ -15,9 +15,11 @@
     import {routeUrl} from "@tunbudi06/inertia-route-helper";
     import {router} from "@inertiajs/core";
     import {toast} from "svelte-sonner";
+    import {destroy} from "$routes/api/queue-label-prints";
 
     // Interface matching backend data structure
     interface QueueItem {
+        id: number;
         rack_code: string;
         label_type: 'kecil' | 'besar' | 'pallet';
         quantity: number;
@@ -39,7 +41,10 @@
 
     // Initialize local state from props - we intentionally capture initial value
     // because we'll be modifying this locally (remove items when printed/deleted)
-    let queueData = $state<QueueItem[]>([...labelNotPrinted]);
+    let queueData = $derived.by(function () {
+        let qdata = labelNotPrinted || [];
+        return qdata as QueueItem[];
+    });
 
     const handler = new TableHandler<QueueItem>([], {
         rowsPerPage: 10,
@@ -99,9 +104,7 @@
 
             await new Promise((resolve) => setTimeout(resolve, 2000));
 
-            const printedCount = selectedIndexes.length;
-
-            await refreshData()
+            await refreshData();
         } catch (error) {
             console.error('Print failed:', error);
             alert('Gagal print label. Silakan coba lagi.');
@@ -131,35 +134,60 @@
         isPrinting = true;
 
         try {
-            const rack_code = handler.rows[index].rack_code;
-            console.log('Printing single label:', rack_code);
+            // Get the label ID for selected index
+            const labelId = handler.rows[index].id;
 
-            // TODO: Send to backend API
-            // await fetch(`/api/queue-label-prints/${rack_code}/print`, {
-            //     method: 'POST'
-            // });
+            // Redirect to print page with single label ID
+            router.visit(routeUrl(label({
+                query: {
+                    labels: JSON.stringify([labelId])
+                }
+            })));
 
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            // Wait a moment then refresh data
+            await new Promise((resolve) => setTimeout(resolve, 2000));
 
-            // Remove from queue
-            queueData = queueData.filter((_, idx) => idx !== index);
+            await refreshData();
 
-            alert('Label berhasil di-print!');
+            toast.success('Label berhasil di-print!');
         } catch (error) {
             console.error('Print failed:', error);
-            alert('Gagal print label. Silakan coba lagi.');
+            toast.error('Gagal print label. Silakan coba lagi.');
         } finally {
             isPrinting = false;
         }
     }
 
     // Delete by index
-    function deleteItem(index: number) {
+    async function deleteItem(index: number) {
         const confirm = window.confirm('Hapus item ini dari queue?');
         if (!confirm) return;
 
-        queueData = queueData.filter((_, idx) => idx !== index);
-        selectedIndexes = selectedIndexes.filter((i) => i !== index);
+        try {
+            const labelId = handler.rows[index].id;
+
+            // Send delete request to backend
+            const response = await fetch(routeUrl(destroy({id: labelId})), {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                toast.success(data.message);
+                // Refresh data from backend
+                await refreshData();
+            } else {
+                toast.error(data.message || 'Gagal menghapus label');
+            }
+        } catch (error) {
+            console.error('Delete failed:', error);
+            toast.error('Gagal menghapus label. Silakan coba lagi.');
+        }
     }
 
     // Refresh data from backend
@@ -167,7 +195,6 @@
         console.log('Refreshing data...');
         router.reload({
             only: ['labelNotPrinted', 'totalLabelToday', 'totalLabelPrinted'],
-            preserveScroll: true,
         });
         toast.info('Data refreshed', {duration: 2000});
     }

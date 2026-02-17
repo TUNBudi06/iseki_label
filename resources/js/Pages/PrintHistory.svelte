@@ -3,7 +3,7 @@
     import * as Table from '$shadcn/components/ui/table/index.ts';
     import * as Card from '$shadcn/components/ui/card/index.ts';
     import { Button } from '$shadcn/components/ui/button';
-    import { Link } from '@inertiajs/svelte';
+    import { Link, router } from '@inertiajs/svelte';
     import {
         Datatable,
         TableHandler,
@@ -12,102 +12,55 @@
     } from '@vincjo/datatables';
     import { onMount } from 'svelte';
     import {assetUrl} from "@tunbudi06/inertia-route-helper";
+    import { toast } from 'svelte-sonner';
 
-    // Sample data - nanti diganti dengan fetch dari API
-    // HANYA data dengan status 'printed' yang ditampilkan di sini
+    // Interface matching backend QueueLabelPrint model
     interface HistoryItem {
         id: number;
-        rackNo: string;
-        requestBy: string;
-        jumlah: number;
-        tipe: string;
-        status: string;
-        createdAt: string;
-        printedAt: string;
-        printedBy: string;
-        priority: string;
+        rack_code: string;
+        label_type: 'kecil' | 'besar' | 'pallet';
+        quantity: number;
+        requested_by: string;
+        area_name: string;
+        printed: boolean;
+        urgent: boolean;
+        created_at: string;
+        updated_at: string;
+        rack_list?: any;
     }
 
-    let historyData = $state<HistoryItem[]>([
-        {
-            id: 3,
-            rackNo: 'BB-B456',
-            requestBy: 'Bob Wilson',
-            jumlah: 3,
-            tipe: 'Rack Kecil',
-            status: 'printed',
-            createdAt: '2026-02-10 07:45:00',
-            printedAt: '2026-02-10 08:00:00',
-            printedBy: 'Admin User',
-            priority: 'normal',
-        },
-        {
-            id: 6,
-            rackNo: 'EE-E345',
-            requestBy: 'David Lee',
-            jumlah: 12,
-            tipe: 'Pallet Assy',
-            status: 'printed',
-            createdAt: '2026-02-10 06:30:00',
-            printedAt: '2026-02-10 07:15:00',
-            printedBy: 'Admin User',
-            priority: 'high',
-        },
-        {
-            id: 7,
-            rackNo: 'FF-F678',
-            requestBy: 'Emma Wilson',
-            jumlah: 7,
-            tipe: 'Rack Assy',
-            status: 'printed',
-            createdAt: '2026-02-10 05:00:00',
-            printedAt: '2026-02-10 06:45:00',
-            printedBy: 'Admin User',
-            priority: 'normal',
-        },
-        {
-            id: 8,
-            rackNo: 'GG-G901',
-            requestBy: 'Frank Miller',
-            jumlah: 20,
-            tipe: 'Pallet Assy',
-            status: 'printed',
-            createdAt: '2026-02-09 22:30:00',
-            printedAt: '2026-02-10 05:30:00',
-            printedBy: 'Admin User',
-            priority: 'urgent',
-        },
-        {
-            id: 9,
-            rackNo: 'HH-H234',
-            requestBy: 'Grace Taylor',
-            jumlah: 4,
-            tipe: 'Rack Kecil',
-            status: 'printed',
-            createdAt: '2026-02-09 21:00:00',
-            printedAt: '2026-02-10 04:00:00',
-            printedBy: 'Admin User',
-            priority: 'normal',
-        },
-    ]);
+    // Props from backend
+    let { historyData = [] } = $props<{
+        historyData?: HistoryItem[];
+    }>();
+
+    // Local state for reactive updates
+    let localHistoryData = $state<HistoryItem[]>([...historyData]);
+
+    // Sync props with local state when backend data changes
+    $effect(() => {
+        localHistoryData = [...historyData];
+    });
 
     const handler = new TableHandler<HistoryItem>([], {
         rowsPerPage: 10,
         highlight: true
     });
+
     $effect(() => {
-        handler.setRows(historyData);
+        handler.setRows(localHistoryData);
     });
 
-    let searchQuery = handler.createSearch(['rackNo', 'requestBy', 'printedBy']);
+    let searchQuery = handler.createSearch(['rack_code', 'requested_by', 'area_name']);
     let selectedIds = $state<number[]>([]);
     let isDeleting = $state(false);
+    let isPrinting = $state(false);
 
-    // Statistics
-    let totalPrinted = $derived(historyData.length);
+    // Statistics - computed from local data
+    let totalPrinted = $derived(localHistoryData.length);
     let printedToday = $derived(
-        historyData.filter(h => {
-            const printDate = new Date(h.printedAt).toDateString();
+        localHistoryData.filter(h => {
+            const printDate = new Date(h.updated_at).toDateString();
             const today = new Date().toDateString();
             return printDate === today;
         }).length
@@ -124,17 +77,17 @@
 
     // Select all
     function toggleSelectAll() {
-        if (selectedIds.length === historyData.length) {
+        if (selectedIds.length === localHistoryData.length) {
             selectedIds = [];
         } else {
-            selectedIds = historyData.map((h) => h.id);
+            selectedIds = localHistoryData.map((h) => h.id);
         }
     }
 
     // Reprint selected
     async function reprintSelected() {
         if (selectedIds.length === 0) {
-            alert('Pilih minimal 1 label untuk di-reprint!');
+            toast.error('Pilih minimal 1 label untuk di-reprint!');
             return;
         }
 
@@ -143,44 +96,104 @@
         );
         if (!confirm) return;
 
-        isDeleting = true;
+        isPrinting = true;
 
-        console.log('Reprinting labels:', selectedIds);
+        try {
+            const response = await fetch('/api/print-history/reprint-multiple', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({ ids: selectedIds }),
+            });
 
-        // TODO: Implement PDF generation untuk reprint
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+            const data = await response.json();
 
-        selectedIds = [];
-        isDeleting = false;
-        alert('Label berhasil di-reprint!');
+            if (data.success) {
+                toast.success(data.message);
+                // Open print page in new window
+                window.open(data.printUrl, '_blank');
+                selectedIds = [];
+            } else {
+                toast.error(data.message || 'Gagal reprint label');
+            }
+        } catch (error) {
+            console.error('Reprint failed:', error);
+            toast.error('Gagal reprint label. Silakan coba lagi.');
+        } finally {
+            isPrinting = false;
+        }
     }
 
     // Reprint single
     async function reprintSingle(id: number) {
-        isDeleting = true;
+        isPrinting = true;
 
-        console.log('Reprinting single label:', id);
+        try {
+            const response = await fetch(`/api/print-history/reprint/${id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
 
-        // TODO: Implement PDF generation untuk 1 label
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+            const data = await response.json();
 
-        isDeleting = false;
-        alert('Label berhasil di-reprint!');
+            if (data.success) {
+                toast.success(data.message);
+                // Open print page in new window
+                window.open(data.printUrl, '_blank');
+            } else {
+                toast.error(data.message || 'Gagal reprint label');
+            }
+        } catch (error) {
+            console.error('Reprint failed:', error);
+            toast.error('Gagal reprint label. Silakan coba lagi.');
+        } finally {
+            isPrinting = false;
+        }
     }
 
     // Delete from history
-    function deleteFromHistory(id: number) {
+    async function deleteFromHistory(id: number) {
         const confirm = window.confirm('Hapus item ini dari history?');
         if (!confirm) return;
 
-        historyData = historyData.filter((h) => h.id !== id);
-        selectedIds = selectedIds.filter((i) => i !== id);
+        isDeleting = true;
+
+        try {
+            const response = await fetch(`/api/print-history/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                toast.success(data.message);
+                // Remove from local state
+                localHistoryData = localHistoryData.filter((h) => h.id !== id);
+                selectedIds = selectedIds.filter((i) => i !== id);
+            } else {
+                toast.error(data.message || 'Gagal menghapus label');
+            }
+        } catch (error) {
+            console.error('Delete failed:', error);
+            toast.error('Gagal menghapus label. Silakan coba lagi.');
+        } finally {
+            isDeleting = false;
+        }
     }
 
     // Delete multiple
     async function deleteSelected() {
         if (selectedIds.length === 0) {
-            alert('Pilih minimal 1 item untuk dihapus!');
+            toast.error('Pilih minimal 1 item untuk dihapus!');
             return;
         }
 
@@ -191,23 +204,37 @@
 
         isDeleting = true;
 
-        // TODO: Send ke API untuk delete
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        try {
+            const response = await fetch('/api/print-history/', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({ ids: selectedIds }),
+            });
 
-        historyData = historyData.filter((h) => !selectedIds.includes(h.id));
-        selectedIds = [];
-        isDeleting = false;
+            const data = await response.json();
+
+            if (data.success) {
+                toast.success(data.message);
+                // Remove from local state
+                localHistoryData = localHistoryData.filter((h) => !selectedIds.includes(h.id));
+                selectedIds = [];
+            } else {
+                toast.error(data.message || 'Gagal menghapus label');
+            }
+        } catch (error) {
+            console.error('Delete failed:', error);
+            toast.error('Gagal menghapus label. Silakan coba lagi.');
+        } finally {
+            isDeleting = false;
+        }
     }
 
     // Refresh data
-    async function refreshData() {
-        console.log('Refreshing history data...');
-        // TODO: Fetch dari API - hanya ambil yang status 'printed'
-        // const response = await fetch('/api/queue-label-prints?status=printed');
-        // historyData = await response.json();
-
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        console.log('History data refreshed.');
+    function refreshData() {
+        router.reload({ only: ['historyData', 'printedToday', 'totalPrinted'] });
     }
 
     onMount(() => {
@@ -314,11 +341,11 @@
                             </span>
                             <Button
                                 onclick={reprintSelected}
-                                disabled={isDeleting}
+                                disabled={isPrinting}
                                 size="sm"
                                 class="bg-green-600 hover:bg-green-700"
                             >
-                                {isDeleting
+                                {isPrinting
                                     ? '⏳ Processing...'
                                     : `🖨️ Reprint (${selectedIds.length})`}
                             </Button>
@@ -366,15 +393,15 @@
                                 <Table.Head class="w-16 text-center"
                                     >#</Table.Head
                                 >
-                                <Table.Head>Rack No</Table.Head>
-                                <Table.Head>Request By</Table.Head>
+                                <Table.Head>Rack Code</Table.Head>
+                                <Table.Head>Requested By</Table.Head>
                                 <Table.Head class="text-center"
-                                    >Jumlah</Table.Head
+                                    >Quantity</Table.Head
                                 >
-                                <Table.Head>Tipe Label</Table.Head>
+                                <Table.Head>Label Type</Table.Head>
                                 <Table.Head>Waktu Request</Table.Head>
                                 <Table.Head>Waktu Print</Table.Head>
-                                <Table.Head>Printed By</Table.Head>
+                                <Table.Head>Area</Table.Head>
                                 <Table.Head class="text-center"
                                     >Actions</Table.Head
                                 >
@@ -406,40 +433,41 @@
                                         {index + 1}
                                     </Table.Cell>
                                     <Table.Cell class="font-bold text-green-900">
-                                        {@html item.rackNo}
+                                        {@html item.rack_code}
                                     </Table.Cell>
                                     <Table.Cell>
                                         <div class="flex items-center gap-2">
                                             <span
                                                 class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-xs font-bold text-green-700"
                                             >
-                                                {@html item.requestBy
+                                                {@html item.requested_by
                                                     .split(' ')
-                                                    .map((n: string) => n[0])
-                                                    .join('')}
+                                                    .map((n) => n[0])
+                                                    .join('')
+                                                    .toUpperCase()}
                                             </span>
-                                            <span>{@html item.requestBy}</span>
+                                            <span>{@html item.requested_by}</span>
                                         </div>
                                     </Table.Cell>
                                     <Table.Cell class="text-center">
                                         <span
                                             class="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-gray-200 text-gray-800"
                                         >
-                                            {item.jumlah}x
+                                            {item.quantity}x
                                         </span>
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <span class="text-sm">{item.tipe}</span>
+                                        <span class="text-sm capitalize">{item.label_type}</span>
                                     </Table.Cell>
                                     <Table.Cell class="text-sm text-gray-600">
                                         {new Date(
-                                            item.createdAt,
+                                            item.created_at,
                                         ).toLocaleString('id-ID')}
                                     </Table.Cell>
                                     <Table.Cell class="text-sm">
                                         <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
                                             ✅ {new Date(
-                                                item.printedAt,
+                                                item.updated_at,
                                             ).toLocaleString('id-ID', {
                                                 month: 'short',
                                                 day: 'numeric',
@@ -449,14 +477,14 @@
                                         </span>
                                     </Table.Cell>
                                     <Table.Cell class="text-sm text-gray-600">
-                                        {item.printedBy}
+                                        {item.area_name || '-'}
                                     </Table.Cell>
                                     <Table.Cell>
                                         <div class="flex gap-1 justify-center">
                                             <Button
                                                 onclick={() =>
                                                     reprintSingle(item.id)}
-                                                disabled={isDeleting}
+                                                disabled={isPrinting || isDeleting}
                                                 size="sm"
                                                 class="bg-green-600 hover:bg-green-700"
                                                 title="Reprint label ini"
@@ -466,6 +494,7 @@
                                             <Button
                                                 onclick={() =>
                                                     deleteFromHistory(item.id)}
+                                                disabled={isPrinting || isDeleting}
                                                 size="sm"
                                                 variant="destructive"
                                                 title="Hapus dari history"

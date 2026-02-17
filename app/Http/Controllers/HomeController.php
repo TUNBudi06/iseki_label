@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\QueueLabelPrint;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -43,6 +44,28 @@ class HomeController extends Controller
             'totalLabelToday' => $totallabeltoday->filter()->count(),
             'totalLabelPrinted' => $totallabelprinted->filter()->count(),
         ]);
+    }
+
+    /**
+     * Delete a label from queue.
+     */
+    public function destroy(int $id)
+    {
+        try {
+            $label = QueueLabelPrint::findOrFail($id);
+
+            $label->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Label berhasil dihapus dari queue',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus label: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }
 

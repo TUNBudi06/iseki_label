@@ -2,6 +2,7 @@
     import AutoFitText from '$lib/print/text/AutoFitText.svelte';
     import { CircleCheck } from '@lucide/svelte';
     import QRCodeGen from '$lib/print/QRCodeGen.svelte';
+    import { formatCode10 } from '$lib/print/text/text-formatter.ts';
 
     let {
         rack = 'MM-M008',
@@ -10,10 +11,6 @@
     } = $props();
 
     let codeParser = $derived(formatCode10(code));
-
-    function formatCode10(s: string): string {
-        return s.replace(/^(.{4})(.{3})(.{3})(.{2})$/, '$1-$2-$3-$4');
-    }
 </script>
 
 <div class="relative font-mono border-2 flex w-[72mm] h-[11mm] border-black">

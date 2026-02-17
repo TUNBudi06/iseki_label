@@ -17,6 +17,7 @@ class QueueLabelPrint extends Model
         'requested_by',
         'area_name',
         'printed',
+        'auto_print',
         'urgent',
     ];
 

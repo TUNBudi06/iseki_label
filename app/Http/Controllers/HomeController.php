@@ -22,7 +22,7 @@ class HomeController extends Controller
                 return $item;
             }
             return null;
-        });
+        })->filter();
 
         $totallabeltoday = $query->map(function ($item) {
             $itemDate = Carbon::parse($item->created_at)->format('Y-m-d');
@@ -30,19 +30,21 @@ class HomeController extends Controller
             if ($itemDate == $currentDate) {
                 return $item;
             }
-        });
+        })->filter();
 
         $totallabelprinted = $query->map(function ($item) {
             if($item->printed){
                 return $item;
             }
-        });
+        })->filter();
+
+        debugbar()->info($labelNotPrinted->toArray());
 
         return Inertia::render('Home', [
             'message' => 'Welcome to the Home Page!',
-            'labelNotPrinted' => $labelNotPrinted->filter(),
-            'totalLabelToday' => $totallabeltoday->filter()->count(),
-            'totalLabelPrinted' => $totallabelprinted->filter()->count(),
+            'labelNotPrinted' => $labelNotPrinted,
+            'totalLabelToday' => $totallabeltoday->count(),
+            'totalLabelPrinted' => $totallabelprinted->count(),
         ]);
     }
 

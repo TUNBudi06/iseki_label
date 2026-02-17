@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\QueueLabelPrint;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class PagePrintController extends Controller
@@ -23,6 +24,7 @@ class PagePrintController extends Controller
             $data = [
                 'rack_code' => $item->RackList->rack_no,
                 'label_type' => $item->label_type,
+                'id_label' => $item->id,
                 'item_code' => $item->RackList ? $item->RackList->item_code : null,
                 'type_tractor' => $item->RackList ? $item->RackList->type_tractor : null,
                 'item_name' => $item->RackList ? $item->RackList->part_name : null,
@@ -47,5 +49,29 @@ class PagePrintController extends Controller
             'idsPrint' => $idsPrint,
             'list' => $list,
         ]);
+    }
+
+    public function alreadyPrinted(Request $request) {
+        $ids = $request->query('labels', null);
+        $idsPrint = [];
+        if ($ids) {
+           $idsPrint = json_decode($ids,true);
+        }
+
+        return DB::transaction(function () use ($idsPrint) {
+            $printedLabels = QueueLabelPrint::with('RackList')
+                ->whereIn('id', $idsPrint)
+                ->where('printed', true)
+                ->get();
+
+            $printedLabels->each(function ($item) {
+                $item->printed = true;
+                $item->save();
+            });
+            return response()->json([
+                'success' => true,
+                'message' => 'Labels marked as printed',
+            ]);
+        });
     }
 }

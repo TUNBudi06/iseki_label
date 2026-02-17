@@ -178,4 +178,8 @@ export class PrintModule {
             this.autoPingInterval = null;
         }
     }
+
+    isConnectred(): boolean {
+        return !this.disconnected;
+    }
 }

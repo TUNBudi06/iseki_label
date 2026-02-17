@@ -44,7 +44,7 @@ history.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\PagePrintController::label
- * @see app/Http/Controllers/PagePrintController.php:11
+ * @see app/Http/Controllers/PagePrintController.php:12
  * @route '/home/print/label'
  */
 export const label = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -59,7 +59,7 @@ label.definition = {
 
 /**
 * @see \App\Http\Controllers\PagePrintController::label
- * @see app/Http/Controllers/PagePrintController.php:11
+ * @see app/Http/Controllers/PagePrintController.php:12
  * @route '/home/print/label'
  */
 label.url = (options?: RouteQueryOptions) => {
@@ -68,7 +68,7 @@ label.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\PagePrintController::label
- * @see app/Http/Controllers/PagePrintController.php:11
+ * @see app/Http/Controllers/PagePrintController.php:12
  * @route '/home/print/label'
  */
 label.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -77,7 +77,7 @@ label.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\PagePrintController::label
- * @see app/Http/Controllers/PagePrintController.php:11
+ * @see app/Http/Controllers/PagePrintController.php:12
  * @route '/home/print/label'
  */
 label.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -87,7 +87,7 @@ label.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\AutoPrintController::autoPrint
- * @see app/Http/Controllers/AutoPrintController.php:11
+ * @see app/Http/Controllers/AutoPrintController.php:10
  * @route '/home/print/automation'
  */
 export const autoPrint = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -102,7 +102,7 @@ autoPrint.definition = {
 
 /**
 * @see \App\Http\Controllers\AutoPrintController::autoPrint
- * @see app/Http/Controllers/AutoPrintController.php:11
+ * @see app/Http/Controllers/AutoPrintController.php:10
  * @route '/home/print/automation'
  */
 autoPrint.url = (options?: RouteQueryOptions) => {
@@ -111,7 +111,7 @@ autoPrint.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\AutoPrintController::autoPrint
- * @see app/Http/Controllers/AutoPrintController.php:11
+ * @see app/Http/Controllers/AutoPrintController.php:10
  * @route '/home/print/automation'
  */
 autoPrint.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -120,7 +120,7 @@ autoPrint.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\AutoPrintController::autoPrint
- * @see app/Http/Controllers/AutoPrintController.php:11
+ * @see app/Http/Controllers/AutoPrintController.php:10
  * @route '/home/print/automation'
  */
 autoPrint.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({

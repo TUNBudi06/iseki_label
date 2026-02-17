@@ -378,19 +378,19 @@
                                     />
                                 </Table.Head>
                                 <Table.Head class="w-16 text-center"
-                                    >#</Table.Head
+                                >#</Table.Head
                                 >
                                 <Table.Head>Rack Code</Table.Head>
                                 <Table.Head>Request By</Table.Head>
                                 <Table.Head>Area Name</Table.Head>
                                 <Table.Head class="text-center"
-                                    >Quantity</Table.Head
+                                >Quantity</Table.Head
                                 >
                                 <Table.Head>Label Type</Table.Head>
                                 <Table.Head class="text-center">Priority</Table.Head>
                                 <Table.Head>Created At</Table.Head>
                                 <Table.Head class="text-center"
-                                    >Actions</Table.Head
+                                >Actions</Table.Head
                                 >
                             </Table.Row>
                         </Table.Header>

@@ -151,7 +151,6 @@
             <Card.Content>
                 <div class="w-full">
                     <div class="flex gap-3 items-center justify-center my-4 flex-wrap">
-                        <Button>Print Now</Button>
                         <span class="text-sm text-gray-600">Total Sheets: {sheetCount}</span>
 
                         <div class="flex gap-2 items-center border-l pl-3 ml-3">

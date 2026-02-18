@@ -1,3 +1,5 @@
+import axios, { type AxiosInstance } from "axios";
+
 export type HealthResponse = {
     status: string;
     sumatra_found: boolean;
@@ -6,180 +8,66 @@ export type HealthResponse = {
     os: string;
 };
 
-export class PrintModule {
-    disconnected: boolean = true;
-    hasInitiated: boolean = false;
+export type Printer = {
+    name: string;
+    status: string;
+    status_code: number,
+    default: boolean;
     port: number;
-    defaultPrinter: string | null = null;
-    hostname: string | null = null;
-    hash: string | null = null;
-    host: string | null = '127.0.0.1';
+};
 
-    private autoPingInterval: number | null = null;
-    private isChecking: boolean = false; // prevent overlapping fetch
+export type PrinterListResponse = {
+    success: boolean;
+    printers: Printer[];
+    count: number;
+};
 
-    constructor(port: number = 60001) {
-        this.port = port;
+export class PrintAPI {
+    private api: AxiosInstance;
+
+    constructor(
+        host: string = "127.0.0.1",
+        port: number = 60001
+    ) {
+        this.api = axios.create({
+            baseURL: `http://${host}:${port}`,
+            timeout: 5000
+        });
     }
 
-    /* ================================
-       PRINTERS
-    ================================== */
-
-    async getPrinterAvailable(): Promise<any[]> {
-        try {
-            const response = await fetch(
-                `http://${this.host}:${this.port}/printers`
-            );
-
-            if (!response.ok) return [];
-
-            const data = await response.json();
-            return data.printers || [];
-        } catch (error) {
-            console.error('Error fetching printers:', error);
-            return [];
-        }
+    async checkHealth(): Promise<HealthResponse> {
+        const res = await this.api.get<HealthResponse>("/health");
+        return res.data;
     }
 
-    private updateDefaultPrinter(printers: any[]) {
-        if (!printers || printers.length === 0) {
-            this.defaultPrinter = null;
-            return;
-        }
-
-        // Default to first printer
-        this.defaultPrinter = printers[0].name || printers[0];
-
-        // Override with system default
-        for (const p of printers) {
-            if (p.default) {
-                this.defaultPrinter = p.name;
-                break;
-            }
-        }
+    async getPrinterAvailable(): Promise<PrinterListResponse> {
+        const res = await this.api.get<PrinterListResponse>("/printers");
+        return res.data;
     }
 
-    /* ================================
-       INIT
-    ================================== */
-
-    async init(): Promise<boolean> {
-        const alive = await this.pingServer();
-
-        if (!alive) {
-            this.hasInitiated = false;
-            this.defaultPrinter = null;
-            return false;
-        }
-
-        const printers = await this.getPrinterAvailable();
-        this.updateDefaultPrinter(printers);
-        this.hasInitiated = true;
-
-        return true;
+    async getDefaultPrinter(): Promise<Printer | null> {
+        const res = await this.getPrinterAvailable();
+        if (!res.success) return null;
+        return res.printers.find(p => p.default) ?? null;
     }
 
-    /* ================================
-       HEALTH CHECK
-    ================================== */
+    async printPDF(
+        file: File,
+        printer: string,
+        webhook?: string,
+        webhook_data?: string
+    ): Promise<any> {
+        const form = new FormData();
+        form.append("pdf", file);
+        form.append("printer", printer);
 
-    async pingServer(timeout: number = 3000): Promise<boolean> {
-        if (this.isChecking) return !this.disconnected; // prevent overlap
+        if (webhook) form.append("webhook", webhook);
+        if (webhook_data) form.append("webhook_data", webhook_data);
 
-        this.isChecking = true;
+        const res = await this.api.post("/print", form, {
+            headers: { "Content-Type": "multipart/form-data" }
+        });
 
-        try {
-            const controller = new AbortController();
-            const id = setTimeout(() => controller.abort(), timeout);
-
-            const response = await fetch(
-                `http://${this.host}:${this.port}/health`,
-                { signal: controller.signal }
-            );
-
-            clearTimeout(id);
-
-            if (!response.ok) {
-                this.resetConnectionState();
-                return false;
-            }
-
-            const data: HealthResponse = await response.json();
-
-            const isHealthy = data.status === "healthy";
-
-            if (!isHealthy) {
-                this.resetConnectionState();
-                return false;
-            }
-
-            // Save metadata
-            this.hostname = data.hostname;
-            this.hash = data.client_id;
-            this.disconnected = false;
-
-            return true;
-
-        } catch (error) {
-            this.resetConnectionState();
-            return false;
-        } finally {
-            this.isChecking = false;
-        }
-    }
-
-    private resetConnectionState() {
-        this.disconnected = true;
-        this.hostname = null;
-        this.hash = null;
-    }
-
-    /* ================================
-       AUTO PING
-    ================================== */
-
-    async startAutoPing(interval: number = 5000) {
-        if (this.autoPingInterval !== null) {
-            clearInterval(this.autoPingInterval);
-            this.autoPingInterval = null;
-        }
-
-        const check = async () => {
-            const alive = await this.pingServer();
-
-            if (alive && !this.hasInitiated) {
-                const printers = await this.getPrinterAvailable();
-                this.updateDefaultPrinter(printers);
-                this.hasInitiated = true;
-                console.log(
-                    'Print server reconnected:',
-                    this.hostname,
-                    this.hash
-                );
-            }
-
-            if (!alive && this.hasInitiated) {
-                this.hasInitiated = false;
-                this.defaultPrinter = null;
-                console.log('Print server disconnected.');
-            }
-        };
-
-        // Run immediately
-        await check();
-
-        this.autoPingInterval = window.setInterval(check, interval);
-    }
-
-    stopAutoPing() {
-        if (this.autoPingInterval !== null) {
-            clearInterval(this.autoPingInterval);
-            this.autoPingInterval = null;
-        }
-    }
-
-    isConnectred(): boolean {
-        return !this.disconnected;
+        return res.data;
     }
 }

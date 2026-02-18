@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\QueueLabelPrint;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -38,7 +40,7 @@ class HomeController extends Controller
             }
         })->filter();
 
-        debugbar()->info($labelNotPrinted->toArray());
+//        debugbar()->info($labelNotPrinted->toArray());
 
         return Inertia::render('Home', [
             'message' => 'Welcome to the Home Page!',
@@ -67,6 +69,25 @@ class HomeController extends Controller
                 'success' => false,
                 'message' => 'Gagal menghapus label: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function markAsPrinted(Request $request)
+    {
+        $index = $request->validate([
+            'id' => 'required|integer',
+        ])['id'];
+
+
+        try {
+            return DB::transaction(function () use ($request, $index) {
+                $label = QueueLabelPrint::findOrFail($index);
+                $label->printed = true;
+                $label->save();
+                return \response(null,204);
+            });
+        } catch (Exception $e) {
+            return \response(null,500);
         }
     }
 }

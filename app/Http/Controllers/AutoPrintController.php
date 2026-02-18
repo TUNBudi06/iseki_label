@@ -9,6 +9,6 @@ class AutoPrintController extends Controller
 {
     public function index(Request $request)
     {
-        return Inertia::render('AutoPrintPage');
+        return Inertia::render('AutoPrint/AutoPrintPage');
     }
 }

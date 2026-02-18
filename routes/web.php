@@ -13,6 +13,7 @@ Route::get('/', function () {
 
 Route::prefix('home')->group(function () {
     Route::get('/', [HomeController::class, 'index'])->name('home');
+    Route::post('mark-as-printed', [HomeController::class, 'markAsPrinted'])->name('home.mark-as-printed');
     Route::get('/about', [AboutController::class, 'index'])->name('about');
     Route::prefix('print')->group(function () {
         Route::get('history', [PrintHistoryController::class, 'index'])->name('print.history');

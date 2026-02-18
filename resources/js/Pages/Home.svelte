@@ -2,8 +2,18 @@
     import Navbar from '$/Layouts/Navbar.svelte';
     import * as Table from '$shadcn/components/ui/table/index.ts';
     import * as Card from '$shadcn/components/ui/card/index.ts';
+
+    // Reference imports to avoid static-analyzer false-positive about unused namespace imports
+    // (these are intentionally no-op; markup already uses <Table.*> and <Card.*>)
+    const _shadcnTable = Table;
+    const _shadcnCard = Card;
+    // no-op use to satisfy static analyzer
+    void _shadcnTable;
+    void _shadcnCard;
+
     import { Button } from '$shadcn/components/ui/button';
     import { Link } from '@inertiajs/svelte';
+    import { BookmarkCheck } from '@lucide/svelte';
     import {
         Datatable,
         TableHandler,
@@ -11,11 +21,13 @@
         Pagination,
     } from '@vincjo/datatables';
     import { onMount } from 'svelte';
-    import {history as UrlHistory, label} from "$routes/print";
+    import {autoPrint, history as UrlHistory, label} from "$routes/print";
     import {routeUrl} from "@tunbudi06/inertia-route-helper";
     import {router} from "@inertiajs/core";
     import {toast} from "svelte-sonner";
     import {destroy} from "$routes/api/queue-label-prints";
+    import {markAsPrinted} from "$routes/home";
+    import {useForm} from "@inertiajs/svelte";
 
     // Interface matching backend data structure
     interface QueueItem {
@@ -57,13 +69,7 @@
         highlight: true
     });
     $effect(() => {
-        console.log('🔍 queueData:', queueData);
-        console.log('🔍 queueData is array?', Array.isArray(queueData));
-        console.log('🔍 queueData length:', queueData?.length);
-        console.log('🔍 labelNotPrinted:', labelNotPrinted);
         handler.setRows(queueData);
-        console.log('✅ handler.rows after setRows:', handler.rows);
-        console.log('✅ handler.allRows:', handler.allRows);
     });
 
     let selectedIndexes = $state<number[]>([]); // Use index as identifier
@@ -203,11 +209,15 @@
     }
 
     // Refresh data from backend
-    async function refreshData() {
-        console.log('Refreshing data...');
+
+    async function reloadOnly(){
         router.reload({
             only: ['labelNotPrinted', 'totalLabelToday', 'totalLabelPrinted'],
         });
+    }
+    async function refreshData() {
+        console.log('Refreshing data...');
+        await reloadOnly();
         toast.info('Data refreshed', {duration: 2000});
     }
 
@@ -221,6 +231,50 @@
         const interval = setInterval(refreshData, 30000);
         return () => clearInterval(interval);
     });
+
+    const markForm = useForm({
+        id: 0
+    })
+    function markDone(index:number) {
+        $markForm.id = handler.rows[index].id;
+        $markForm.post(routeUrl(markAsPrinted()), {
+            onSuccess: () => {
+                toast.success('Label marked as printed!');
+                reloadOnly();
+            },
+            onError: () => {
+                toast.error('Failed to mark label as printed.');
+            }
+        });
+    }
+
+    // --- PDF Server Printing guide helpers (implements the commented block) ---
+    // Default points to the local helper README in your workspace; adjust if needed.
+    let pdfGuideUrl = $state('file:///D:/Budi/python-auto-printer/README.md');
+    let startCommand = $state('python server.py');
+
+    function openPdfGuide() {
+        // attempt to open guide in a new tab/window; if browser blocks file:// you can use an online link
+        try {
+            window.open(pdfGuideUrl, '_blank');
+        } catch (e) {
+            toast.error('Unable to open guide. Copy the guide URL and open it manually.');
+        }
+    }
+
+    async function copyStartCommand() {
+        try {
+            await navigator.clipboard.writeText(startCommand);
+            toast.success('Start command copied to clipboard');
+        } catch (e) {
+            toast.error('Clipboard not available in this browser');
+        }
+    }
+
+    // Helper: open autoprint page; prefer named route if available
+    function openAutoPrintPage() {
+        router.visit(routeUrl(autoPrint()));
+    }
 </script>
 
 <Navbar>
@@ -364,6 +418,9 @@
             </Card.Content>
         </Card.Root>
 
+<!--        create card information and link about automatic printing which when get into reference page need a client or app PDFServerPrinting-->
+<!--        to make sure client is connected and can auto printing self but need standby laptop-->
+
         <!-- Queue Table -->
         <Card.Root>
             <Card.Header>
@@ -478,7 +535,15 @@
                                         ).toLocaleString('id-ID')}
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <div class="flex gap-1 justify-center">
+                                        <div class="flex gap-1 gap-x-4 justify-center">
+                                            <Button
+                                                onclick={() => markDone(index)}
+                                                size="sm"
+                                                variant="default"
+                                                class="bg-green-600 hover:bg-green-700"
+                                            >
+                                                <BookmarkCheck />
+                                            </Button>
                                             <Button
                                                 onclick={() => printSingle(index)}
                                                 disabled={isPrinting}
@@ -511,6 +576,36 @@
                         </div>
                     {/snippet}
                 </Datatable>
+            </Card.Content>
+        </Card.Root>
+
+        <!-- Card: Automatic printing guide (compact, links to autoprint page) -->
+        <Card.Root>
+            <Card.Content class="p-4">
+                <div class="flex flex-col md:flex-row gap-4 items-start justify-between">
+                    <div class="flex-1">
+                        <h4 class="text-lg font-semibold text-pink-900">Automatic Printing</h4>
+                        <p class="text-sm text-gray-600 mt-1">
+                            Fitur Automatic Printing mengirimkan job PDF langsung ke aplikasi klien (PDFServerPrinting) yang berjalan di mesin terdekat. Pastikan klien dijalankan dan siap menerima job sebelum menggunakan fitur ini.
+                        </p>
+
+                        <div class="mt-3 flex gap-2">
+                            <Button onclick={() => openAutoPrintPage()} size="sm" class="bg-pink-600 hover:bg-pink-700">➡️ Open AutoPrint Page</Button>
+                        </div>
+
+                        <div class="mt-2 text-sm text-gray-700">
+                            <div>Note: AutoPrint page berisi panduan, status koneksi, dan pengaturan host untuk klien printing.</div>
+                        </div>
+                    </div>
+
+                    <div class="w-full md:w-1/3 text-sm text-gray-700">
+                        <h5 class="font-medium text-pink-900">Saran singkat</h5>
+                        <ul class="list-disc pl-5 mt-2 space-y-1">
+                            <li>Jalankan PDF printing client pada mesin yang terhubung ke printer.</li>
+                            <li>Gunakan AutoPrint page untuk mengatur host dan memantau koneksi.</li>
+                        </ul>
+                    </div>
+                </div>
             </Card.Content>
         </Card.Root>
 

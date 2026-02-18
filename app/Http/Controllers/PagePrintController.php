@@ -43,8 +43,6 @@ class PagePrintController extends Controller
             return null;
         });
 
-        debugbar()->info($list);
-
         return Inertia::render('PagePrint', [
             'idsPrint' => $idsPrint,
             'list' => $list,

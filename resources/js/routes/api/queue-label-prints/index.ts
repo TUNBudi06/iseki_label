@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\HomeController::destroy
- * @see app/Http/Controllers/HomeController.php:54
+ * @see app/Http/Controllers/HomeController.php:56
  * @route '/api/queue-label-prints/{id}'
  */
 export const destroy = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -16,7 +16,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\HomeController::destroy
- * @see app/Http/Controllers/HomeController.php:54
+ * @see app/Http/Controllers/HomeController.php:56
  * @route '/api/queue-label-prints/{id}'
  */
 destroy.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -44,7 +44,7 @@ destroy.url = (args: { id: string | number } | [id: string | number ] | string |
 
 /**
 * @see \App\Http\Controllers\HomeController::destroy
- * @see app/Http/Controllers/HomeController.php:54
+ * @see app/Http/Controllers/HomeController.php:56
  * @route '/api/queue-label-prints/{id}'
  */
 destroy.delete = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({

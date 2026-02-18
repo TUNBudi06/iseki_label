@@ -6,7 +6,7 @@
 
     let { children = null, class: className = '', ref = $bindable(),sheet } = $props();
     const defaultClass =
-        'relative font-mono bg-white border-[1.6px] border-black min-w-[210mm] w-[210mm] z-0 h-[297mm] min-h-[297mm] box-border flex flex-col gap-y-10 p-[12mm]';
+        'relative font-mono bg-white border-[1.6px] border-black min-w-[210mm] w-[210mm] z-0 h-[297mm] min-h-[297mm] box-border flex flex-col gap-y-[10mm] p-[12mm]';
 
     let stylingClass = $derived(cn(defaultClass, className));
     // first i will define the render however small label need to seperate render i mean 2 col

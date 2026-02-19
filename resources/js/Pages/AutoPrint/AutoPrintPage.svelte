@@ -4,7 +4,7 @@
         type PrintModuleState,
     } from '$lib/print-module-svelte.ts';
     import * as NativeSelect from '$shadcn/components/ui/native-select';
-    import {onMount, tick} from 'svelte';
+    import { onMount, tick } from 'svelte';
     import Navbar from '$/Layouts/Navbar.svelte';
     import * as Card from '$shadcn/components/ui/card';
     import * as Field from '$shadcn/components/ui/field';
@@ -13,14 +13,22 @@
         PrinterCheck as PCIcon,
         Play as PlayIcon,
         SquareIcon,
+        User as UserIcon,
+        Database as DatabaseIcon,
+        SearchIcon,
+        CalendarClock as CalendarClockIcon,
+        ChevronLeft,
+        BetweenHorizonalStart,
+        Shredder,
+        HardDriveUpload,
     } from '@lucide/svelte';
     import { Button } from '$shadcn/components/ui/button';
-    import BeamPrinter from '$/Pages/AutoPrint/BeamPrinter.svelte';
-    import {useInterval} from "runed";
-    import {Input} from "$shadcn/components/ui/input";
+    import { useInterval, IsMounted } from 'runed';
+    import { Input } from '$shadcn/components/ui/input';
+    import AnimatedBeam from '$lib/Beam/AnimatedBeam.svelte';
 
     let printerState = $state<PrintModuleState | null>(null);
-    let mounted = $state(false);
+    let mounted = new IsMounted();
     let usedPrinter = $state<string | null>(null);
     let printerUsedState = $state<PrinterType | null>(null);
     let intervalSetting = $state<number>(5000);
@@ -50,26 +58,27 @@
         mounted = true;
     });
 
+    let startScan = $state(false);
+    let containerRef: HTMLElement | null = $state(null);
+    let webClient: HTMLElement | null = $state(null);
+    let scheduler: HTMLElement | null = $state(null);
+    // additional element refs
+    let fetchingRef: HTMLElement | null = $state(null);
+    let databaseRef: HTMLElement | null = $state(null);
+    let arrayRef: HTMLElement | null = $state(null);
+    let dataListRef: HTMLElement | null = $state(null);
+    let generatingRef: HTMLElement | null = $state(null);
+    let uploadingRef: HTMLElement | null = $state(null);
+    let resultRef: HTMLElement | null = $state(null);
 
-    let client = $state({
-        active: false,
-        webreader: false
-    })
-    async function mainflow(){
-        client.active = true
-        await tick()
-        client.active = false
-        client.webreader = true
-        await tick()
-        client.webreader = false
-    }
-
-    const interval = useInterval(()=>intervalSetting,{
+    const interval = useInterval(() => intervalSetting, {
         immediate: false,
         callback: async () => {
-            await mainflow();
-        }
-    })
+            startScan = true;
+        },
+    });
+
+    $inspect(startScan)
 </script>
 
 <Navbar>
@@ -165,28 +174,142 @@
                 {#if interval.isActive}
                     <Button
                         variant="outline"
-                        onclick={()=>interval.pause()}
+                        onclick={() => interval.pause()}
                         class="border-orange-300 w-40"
                         ><SquareIcon class="text-green-800" /> Stop</Button
                     >
                 {:else}
                     <Button
                         variant="outline"
-                        onclick={() =>interval.resume()}
+                        onclick={() => interval.resume()}
                         class="border-orange-300 w-40"
                         ><PlayIcon class="text-green-800" /> Start</Button
                     >
                 {/if}
                 <Field.Field>
                     <Field.Label for="interval">Interval</Field.Label>
-                    <Input id="interval" bind:value={intervalSetting} autocomplete="on" placeholder="Evil Rabbit" />
+                    <Input
+                        id="interval"
+                        bind:value={intervalSetting}
+                        autocomplete="on"
+                        placeholder="Evil Rabbit"
+                    />
                     <Field.Description>
-                        Set the interval for auto print checking, in milliseconds.
+                        Set the interval for auto print checking, in
+                        milliseconds. <span class="text-sm text-gray-600"
+                            >(counter: {interval.counter})</span
+                        >
                     </Field.Description>
                 </Field.Field>
             </Card.Header>
-            <Card.Content class="bg-pink-500/40">
-                <BeamPrinter active={client.active}/>
+            <Card.Content class=" m-2">
+                <div
+                    class="w-full bg-pink-500/40 h-128 rounded-xl relative"
+                    bind:this={containerRef}
+                >
+                    <div
+                        bind:this={webClient}
+                        class="absolute w-28 flex h-16 top-20 left-20 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                    >
+                        <UserIcon />
+                        <span class="text-xs text-gray-100 text-shadow-2xs"
+                            >Web Client</span
+                        >
+                    </div>
+
+                    <div
+                        bind:this={scheduler}
+                        class="absolute w-28 flex h-16 top-20 left-90 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                    >
+                        <CalendarClockIcon />
+                        <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                            >Scheduler</span
+                        >
+                    </div>
+
+                    <div
+                        bind:this={fetchingRef}
+                        class="absolute w-28 flex h-16 top-20 left-160 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                    >
+                        <SearchIcon />
+                        <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                            >Fetching</span
+                        >
+                    </div>
+
+                    <div
+                        bind:this={databaseRef}
+                        class="absolute w-28 flex h-16 top-20 left-240 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                    >
+                        <DatabaseIcon />
+                        <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                            >Database</span
+                        >
+                    </div>
+
+                    <div
+                        bind:this={arrayRef}
+                        class="absolute w-28 flex h-16 top-20 left-320 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                    >
+                        <ChevronLeft /><ChevronLeft class="rotate-180" />
+                        <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                            >Array</span
+                        >
+                    </div>
+
+                    <div
+                        bind:this={dataListRef}
+                        class="absolute w-28 flex h-16 top-60 left-90 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                    >
+                        <BetweenHorizonalStart />
+                        <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                            >Data List</span
+                        >
+                    </div>
+
+                    <div
+                        bind:this={generatingRef}
+                        class="absolute w-28 flex h-16 top-60 left-160 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                    >
+                        <Shredder />
+                        <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                            >Generating Rendering</span
+                        >
+                    </div>
+
+                    <div
+                        bind:this={uploadingRef}
+                        class="absolute w-28 flex h-16 top-60 left-240 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                    >
+                        <HardDriveUpload />
+                        <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                            >Uplouding</span
+                        >
+                    </div>
+
+                    <div
+                        bind:this={resultRef}
+                        class="absolute w-28 flex h-16 top-60 left-320 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                    >
+                        <ChevronLeft /><ChevronLeft class="rotate-180" />
+                        <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                            >Result</span
+                        >
+                    </div>
+
+                    <AnimatedBeam
+                        duration={10}
+                        trigger={startScan}
+                        pathColor="black"
+                        bind:containerRef
+                        bind:fromRef={webClient}
+                        pathWidth={3}
+                        bind:toRef={scheduler}
+                        onAnimationComplete={() => {
+                            startScan = false;
+                        }}
+                    />
+                </div>
             </Card.Content>
         </Card.Root>
     </div>

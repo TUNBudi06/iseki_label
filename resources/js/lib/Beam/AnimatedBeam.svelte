@@ -21,9 +21,9 @@
         startYOffset?: number;
         endXOffset?: number;
         endYOffset?: number;
-        static?: boolean;          // ← NEW
-        trigger?: boolean;         // ← NEW
-        onAnimationStart?: () => void;  // ← NEW
+        static?: boolean; // ← NEW
+        trigger?: boolean; // ← NEW
+        onAnimationStart?: () => void; // ← NEW
         onAnimationComplete?: () => void; // ← NEW
     }
 
@@ -45,10 +45,10 @@
         startYOffset = 0,
         endXOffset = 0,
         endYOffset = 0,
-        static: isStatic = false,   // defaults to static mode
-        trigger = false,            // for one-shot
+        static: isStatic = false, // defaults to static mode
+        trigger = false, // for one-shot
         onAnimationStart,
-        onAnimationComplete
+        onAnimationComplete,
     }: Props = $props();
 
     let id = $state(crypto.randomUUID().slice(0, 8));
@@ -63,17 +63,17 @@
     let gradientCoordinates = $derived(
         reverse
             ? {
-                x1: ['90%', '-10%'],
-                x2: ['100%', '0%'],
-                y1: ['0%', '0%'],
-                y2: ['0%', '0%']
-            }
+                  x1: ['90%', '-10%'],
+                  x2: ['100%', '0%'],
+                  y1: ['0%', '0%'],
+                  y2: ['0%', '0%'],
+              }
             : {
-                x1: ['10%', '110%'],
-                x2: ['0%', '100%'],
-                y1: ['0%', '0%'],
-                y2: ['0%', '0%']
-            }
+                  x1: ['10%', '110%'],
+                  x2: ['0%', '100%'],
+                  y1: ['0%', '0%'],
+                  y2: ['0%', '0%'],
+              },
     );
 
     function updatePath() {
@@ -92,13 +92,17 @@
 
         svgDimensions = {
             width: containerRect.width,
-            height: containerRect.height
+            height: containerRect.height,
         };
 
-        const startX = rectA.left - containerRect.left + rectA.width / 2 + startXOffset;
-        const startY = rectA.top - containerRect.top + rectA.height / 2 + startYOffset;
-        const endX = rectB.left - containerRect.left + rectB.width / 2 + endXOffset;
-        const endY = rectB.top - containerRect.top + rectB.height / 2 + endYOffset;
+        const startX =
+            rectA.left - containerRect.left + rectA.width / 2 + startXOffset;
+        const startY =
+            rectA.top - containerRect.top + rectA.height / 2 + startYOffset;
+        const endX =
+            rectB.left - containerRect.left + rectB.width / 2 + endXOffset;
+        const endY =
+            rectB.top - containerRect.top + rectB.height / 2 + endYOffset;
 
         const controlY = startY - curvature;
         pathD = `M ${startX},${startY} Q ${(startX + endX) / 2},${controlY} ${endX},${endY}`;
@@ -134,7 +138,10 @@
     width={svgDimensions.width}
     height={svgDimensions.height}
     xmlns="http://www.w3.org/2000/svg"
-    class={cn('pointer-events-none absolute top-0 left-0 transform-gpu', className)}
+    class={cn(
+        'pointer-events-none absolute top-0 left-0 transform-gpu',
+        className,
+    )}
     viewBox={`0 0 ${svgDimensions.width} ${svgDimensions.height}`}
 >
     {#if isReady && pathD}
@@ -161,30 +168,38 @@
                     gradientUnits="userSpaceOnUse"
                     class="transform-gpu"
                     initial={{
-						x1: '0%',
-						x2: '0%',
-						y1: '0%',
-						y2: '0%'
-					}}
+                        x1: '0%',
+                        x2: '0%',
+                        y1: '0%',
+                        y2: '0%',
+                    }}
                     animate={{
-						x1: gradientCoordinates.x1,
-						x2: gradientCoordinates.x2,
-						y1: gradientCoordinates.y1,
-						y2: gradientCoordinates.y2
-					}}
+                        x1: gradientCoordinates.x1,
+                        x2: gradientCoordinates.x2,
+                        y1: gradientCoordinates.y1,
+                        y2: gradientCoordinates.y2,
+                    }}
                     transition={{
-						delay,
-						duration,
-						ease: [0.16, 1, 0.3, 1],
-						repeat: Infinity
-					}}
-                    onAnimationStart={onAnimationStart}
-                    onAnimationComplete={onAnimationComplete}
+                        delay,
+                        duration,
+                        ease: [0.16, 1, 0.3, 1],
+                        repeat: Infinity,
+                    }}
+                    {onAnimationStart}
+                    {onAnimationComplete}
                 >
-                    <stop offset="0%" stop-color={gradientStartColor} stop-opacity="0" />
+                    <stop
+                        offset="0%"
+                        stop-color={gradientStartColor}
+                        stop-opacity="0"
+                    />
                     <stop offset="0%" stop-color={gradientStartColor} />
                     <stop offset="32.5%" stop-color={gradientStopColor} />
-                    <stop offset="100%" stop-color={gradientStopColor} stop-opacity="0" />
+                    <stop
+                        offset="100%"
+                        stop-color={gradientStopColor}
+                        stop-opacity="0"
+                    />
                 </M.linearGradient>
             </defs>
 
@@ -203,32 +218,40 @@
                         gradientUnits="userSpaceOnUse"
                         class="transform-gpu"
                         initial={{
-							x1: '0%',
-							x2: '0%',
-							y1: '0%',
-							y2: '0%'
-						}}
+                            x1: '0%',
+                            x2: '0%',
+                            y1: '0%',
+                            y2: '0%',
+                        }}
                         animate={{
-							x1: gradientCoordinates.x1,
-							x2: gradientCoordinates.x2,
-							y1: gradientCoordinates.y1,
-							y2: gradientCoordinates.y2
-						}}
+                            x1: gradientCoordinates.x1,
+                            x2: gradientCoordinates.x2,
+                            y1: gradientCoordinates.y1,
+                            y2: gradientCoordinates.y2,
+                        }}
                         transition={{
-							delay,
-							duration,
-							ease: [0.16, 1, 0.3, 1]
-						}}
-                        onAnimationStart={onAnimationStart}
+                            delay,
+                            duration,
+                            ease: [0.16, 1, 0.3, 1],
+                        }}
+                        {onAnimationStart}
                         onAnimationComplete={() => {
-							isAnimating = false;
-							onAnimationComplete?.();
-						}}
+                            isAnimating = false;
+                            onAnimationComplete?.();
+                        }}
                     >
-                        <stop offset="0%" stop-color={gradientStartColor} stop-opacity="0" />
+                        <stop
+                            offset="0%"
+                            stop-color={gradientStartColor}
+                            stop-opacity="0"
+                        />
                         <stop offset="0%" stop-color={gradientStartColor} />
                         <stop offset="32.5%" stop-color={gradientStopColor} />
-                        <stop offset="100%" stop-color={gradientStopColor} stop-opacity="0" />
+                        <stop
+                            offset="100%"
+                            stop-color={gradientStopColor}
+                            stop-opacity="0"
+                        />
                     </M.linearGradient>
                 </defs>
             {/key}

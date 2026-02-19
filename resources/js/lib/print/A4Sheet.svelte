@@ -4,11 +4,7 @@
     import RackAssyLabel from '$lib/print/RackAssyLabel.svelte';
     import PalletAssyLabel from '$lib/print/PalletAssyLabel.svelte';
 
-    let {
-        class: className = '',
-        ref = $bindable(),
-        sheet,
-    } = $props();
+    let { class: className = '', ref = $bindable(), sheet } = $props();
     const defaultClass =
         'relative font-mono bg-white border-[1.6px] border-black min-w-[210mm] w-[210mm] z-0 h-[297mm] min-h-[297mm] box-border flex flex-col gap-y-[10mm] p-[12mm]';
 

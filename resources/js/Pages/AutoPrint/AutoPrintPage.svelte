@@ -98,7 +98,13 @@
         callback: ()=> webTask(),
     });
 
-    let durationAnimation = $derived((intervalSetting/1000) - 1)
+    let durationAnimation = $derived.by(()=>{
+        const interval = intervalSetting/1000;
+        if(interval <= 0) {
+            return 1;
+        }
+        return Math.min(interval * 0.8, 5);
+    })
 </script>
 
 <Navbar>

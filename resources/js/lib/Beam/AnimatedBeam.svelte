@@ -59,22 +59,34 @@
     let lastTrigger = $state(false);
     let animationKey = $state(0);
 
-    // Gradient coordinates
-    let gradientCoordinates = $derived(
-        reverse
-            ? {
-                  x1: ['90%', '-10%'],
-                  x2: ['100%', '0%'],
-                  y1: ['0%', '0%'],
-                  y2: ['0%', '0%'],
-              }
-            : {
-                  x1: ['10%', '110%'],
-                  x2: ['0%', '100%'],
-                  y1: ['0%', '0%'],
-                  y2: ['0%', '0%'],
-              },
-    );
+    // Store actual pixel coords of path start/end for gradient animation
+    let pathCoords = $state({ startX: 0, startY: 0, endX: 0, endY: 0 });
+
+    // Gradient coordinates in pixels — beam moves from startX→endX (or reversed)
+    // We extend slightly beyond the endpoints so the gradient head/tail is fully visible
+    let gradientCoordinates = $derived(() => {
+        const { startX, startY, endX, endY } = pathCoords;
+        // beam width span in pixels (roughly 20% of path length as gradient head)
+        const dx = endX - startX;
+        const dy = endY - startY;
+        const pathLen = Math.sqrt(dx * dx + dy * dy) || 1;
+        const headSize = pathLen * 0.25; // gradient head = 25% of path length
+
+        if (reverse) {
+            return {
+                x1: [endX + headSize, startX - headSize],
+                x2: [endX, startX],
+                y1: [endY, startY],
+                y2: [endY, startY],
+            };
+        }
+        return {
+            x1: [startX - headSize, endX + headSize],
+            x2: [startX, endX],
+            y1: [startY, endY],
+            y2: [startY, endY],
+        };
+    });
 
     function updatePath() {
         if (!containerRef || !fromRef || !toRef) {
@@ -104,6 +116,7 @@
         const endY =
             rectB.top - containerRect.top + rectB.height / 2 + endYOffset;
 
+        pathCoords = { startX, startY, endX, endY };
         const controlY = startY - curvature;
         pathD = `M ${startX},${startY} Q ${(startX + endX) / 2},${controlY} ${endX},${endY}`;
         isReady = true;
@@ -168,16 +181,16 @@
                     gradientUnits="userSpaceOnUse"
                     class="transform-gpu"
                     initial={{
-                        x1: '0%',
-                        x2: '0%',
-                        y1: '0%',
-                        y2: '0%',
+                        x1: gradientCoordinates().x1[0],
+                        x2: gradientCoordinates().x2[0],
+                        y1: gradientCoordinates().y1[0],
+                        y2: gradientCoordinates().y2[0],
                     }}
                     animate={{
-                        x1: gradientCoordinates.x1,
-                        x2: gradientCoordinates.x2,
-                        y1: gradientCoordinates.y1,
-                        y2: gradientCoordinates.y2,
+                        x1: gradientCoordinates().x1,
+                        x2: gradientCoordinates().x2,
+                        y1: gradientCoordinates().y1,
+                        y2: gradientCoordinates().y2,
                     }}
                     transition={{
                         delay,
@@ -188,18 +201,10 @@
                     {onAnimationStart}
                     {onAnimationComplete}
                 >
-                    <stop
-                        offset="0%"
-                        stop-color={gradientStartColor}
-                        stop-opacity="0"
-                    />
+                    <stop offset="0%" stop-color={gradientStartColor} stop-opacity="0" />
                     <stop offset="0%" stop-color={gradientStartColor} />
                     <stop offset="32.5%" stop-color={gradientStopColor} />
-                    <stop
-                        offset="100%"
-                        stop-color={gradientStopColor}
-                        stop-opacity="0"
-                    />
+                    <stop offset="100%" stop-color={gradientStopColor} stop-opacity="0" />
                 </M.linearGradient>
             </defs>
 
@@ -218,16 +223,16 @@
                         gradientUnits="userSpaceOnUse"
                         class="transform-gpu"
                         initial={{
-                            x1: '0%',
-                            x2: '0%',
-                            y1: '0%',
-                            y2: '0%',
+                            x1: gradientCoordinates().x1[0],
+                            x2: gradientCoordinates().x2[0],
+                            y1: gradientCoordinates().y1[0],
+                            y2: gradientCoordinates().y2[0],
                         }}
                         animate={{
-                            x1: gradientCoordinates.x1,
-                            x2: gradientCoordinates.x2,
-                            y1: gradientCoordinates.y1,
-                            y2: gradientCoordinates.y2,
+                            x1: gradientCoordinates().x1,
+                            x2: gradientCoordinates().x2,
+                            y1: gradientCoordinates().y1,
+                            y2: gradientCoordinates().y2,
                         }}
                         transition={{
                             delay,
@@ -240,18 +245,10 @@
                             onAnimationComplete?.();
                         }}
                     >
-                        <stop
-                            offset="0%"
-                            stop-color={gradientStartColor}
-                            stop-opacity="0"
-                        />
+                        <stop offset="0%" stop-color={gradientStartColor} stop-opacity="0" />
                         <stop offset="0%" stop-color={gradientStartColor} />
                         <stop offset="32.5%" stop-color={gradientStopColor} />
-                        <stop
-                            offset="100%"
-                            stop-color={gradientStopColor}
-                            stop-opacity="0"
-                        />
+                        <stop offset="100%" stop-color={gradientStopColor} stop-opacity="0" />
                     </M.linearGradient>
                 </defs>
             {/key}

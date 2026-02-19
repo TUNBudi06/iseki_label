@@ -298,12 +298,14 @@
                     </div>
 
                     <AnimatedBeam
-                        duration={10}
+                        duration={intervalSetting/1000}
                         trigger={startScan}
                         pathColor="black"
                         bind:containerRef
                         bind:fromRef={webClient}
-                        pathWidth={3}
+                        gradientStartColor="#2b7cff"
+                        gradientStopColor="#00e5ff"
+                        pathWidth={4}
                         bind:toRef={scheduler}
                         onAnimationComplete={() => {
                             startScan = false;

@@ -186,7 +186,7 @@
                 </Field.Field>
             </Card.Header>
             <Card.Content class="bg-pink-500/40">
-                <BeamPrinter active={client.active} webreader={client.webreader} />
+                <BeamPrinter active={client.active}/>
             </Card.Content>
         </Card.Root>
     </div>

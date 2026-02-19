@@ -75,6 +75,7 @@
             {containerRef}
             fromRef={userNode}
             toRef={scheduleNode}
+            reverse={true}
             static={true}
             duration={2}
             pathWidth={2}

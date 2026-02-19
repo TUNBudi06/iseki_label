@@ -56,7 +56,6 @@
 
     onMount(() => {
         fetchPrinterState();
-        mounted = true;
     });
 
     let startTask = $state(false);
@@ -353,6 +352,32 @@
                             startScanDb = false;
                             taskIsRunning = false;
                         }}
+                    />
+                    <AnimatedBeam
+                        duration={durationAnimation}
+                        trigger={startScanDb}
+                        pathColor="black"
+                        startXOffset={60}
+                        endXOffset={-50}
+                        bind:containerRef
+                        bind:fromRef={fetchingRef}
+                        bind:toRef={databaseRef}
+                        gradientStartColor="#2b7cff"
+                        gradientStopColor="#00e5ff"
+                        pathWidth={4}
+                    />
+                    <AnimatedBeam
+                        duration={durationAnimation}
+                        trigger={startScanDb}
+                        pathColor="black"
+                        startXOffset={60}
+                        endXOffset={-50}
+                        bind:containerRef
+                        bind:fromRef={databaseRef}
+                        bind:toRef={arrayRef}
+                        gradientStartColor="#2b7cff"
+                        gradientStopColor="#00e5ff"
+                        pathWidth={4}
                     />
                     <AnimatedBeam
                         duration={durationAnimation}

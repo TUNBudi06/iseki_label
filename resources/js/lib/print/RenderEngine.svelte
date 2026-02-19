@@ -4,24 +4,11 @@
     import jsPDF from 'jspdf';
     import html2canvas from 'html2canvas-pro';
     import { onMount } from 'svelte';
-    import { PrintModule } from '$lib/print-module.ts';
 
     let { sheets, ids } = $props();
 
     let isGenerating = $state(false);
     let printArea: HTMLElement | null = null;
-
-    const printModule = new PrintModule();
-    onMount(() => {
-        (async () => {
-            await printModule.init();
-            await printModule.startAutoPing();
-            console.log('PrintModule state after start:', printModule);
-        })();
-
-        // Return a cleanup function so the auto-ping stops on unmount
-        return () => printModule.stopAutoPing();
-    });
 
     async function printMultiPagePDF() {
         if (!printArea) return;

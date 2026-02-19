@@ -1,6 +1,6 @@
 <script lang="ts">
     import AnimatedBeam from '$lib/Beam/AnimatedBeam.svelte';
-    import { User as UserIcon, CalendarClock,DatabaseSearch } from '@lucide/svelte';
+    import { User as UserIcon, CalendarClock,SearchIcon,Printer as PrinterIcon } from '@lucide/svelte';
 
     let { active = false } = $props();
 
@@ -8,8 +8,8 @@
     let containerRef = $state<HTMLElement>();
     let userNode = $state<HTMLElement>();
     let scheduleNode = $state<HTMLElement>(); // First node 2
-    let node2b = $state<HTMLElement>(); // Second node 2
-    let node3 = $state<HTMLElement>();
+    let DbNode = $state<HTMLElement>(); // Second node 2
+    let printShedule = $state<HTMLElement>();3
 
     let isAnimating = $state(false);
 
@@ -68,22 +68,26 @@
     />
 
     <div
+        bind:this={DbNode}
         class="absolute left-100 top-40 w-30 h-14
            bg-linear-to-br from-purple-500 to-pink-400
            rounded-2xl shadow-lg shadow-purple-500/30
            flex items-center justify-center text-white font-bold text-lg"
     >
-        <DatabaseSearch />
+        <SearchIcon />
         <span class="text-sm ps-1">DB</span>
     </div>
+    <AnimatedBeam {containerRef} fromRef={scheduleNode} curvature={100} startYOffset={-28} startXOffset={50} endXOffset={-60} toRef={DbNode}/>
 
     <div
+        bind:this={printShedule}
         class="absolute left-100 top-80 w-30 h-14
            bg-linear-to-br from-purple-500 to-pink-400
            rounded-2xl shadow-lg shadow-purple-500/30
            flex items-center justify-center text-white font-bold text-lg"
     >
-        <CalendarClock />
-        <span class="text-sm ps-1">DB</span>
+        <PrinterIcon />
+        <span class="text-sm ps-1">Print</span>
     </div>
+    <AnimatedBeam {containerRef} fromRef={scheduleNode} curvature={-100} startYOffset={28} startXOffset={50} endXOffset={-60} toRef={printShedule}/>
 </div>

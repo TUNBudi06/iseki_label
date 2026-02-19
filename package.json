@@ -11,9 +11,9 @@
         "format:check": "prettier --check ."
     },
     "devDependencies": {
-        "@eslint/js": "^9.39.2",
+        "@eslint/js": "^10.0.1",
         "@internationalized/date": "^3.11.0",
-        "@lucide/svelte": "^0.561.0",
+        "@lucide/svelte": "^0.574.0",
         "@sveltejs/vite-plugin-svelte": "^6.2.4",
         "@tailwindcss/forms": "^0.5.11",
         "@tailwindcss/language-server": "^0.14.29",
@@ -28,8 +28,8 @@
         "bits-ui": "^2.15.8",
         "clsx": "^2.1.1",
         "concurrently": "^9.2.1",
-        "eslint": "^9.39.2",
-        "eslint-config-prettier": "^9.1.2",
+        "eslint": "^10.0.0",
+        "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-prettier": "^5.5.5",
         "eslint-plugin-svelte": "^3.15.0",
         "laravel-vite-plugin": "^2.1.0",

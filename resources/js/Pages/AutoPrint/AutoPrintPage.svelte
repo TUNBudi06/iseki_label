@@ -26,6 +26,7 @@
     import { useInterval, IsMounted } from 'runed';
     import { Input } from '$shadcn/components/ui/input';
     import AnimatedBeam from '$lib/Beam/AnimatedBeam.svelte';
+    import {isEmptyObject} from "tailwind-variants/utils";
 
     let printerState = $state<PrintModuleState | null>(null);
     let mounted = new IsMounted();
@@ -58,7 +59,7 @@
         mounted = true;
     });
 
-    let startScan = $state(false);
+    let startTask = $state(false);
     let containerRef: HTMLElement | null = $state(null);
     let webClient: HTMLElement | null = $state(null);
     let scheduler: HTMLElement | null = $state(null);
@@ -71,14 +72,33 @@
     let uploadingRef: HTMLElement | null = $state(null);
     let resultRef: HTMLElement | null = $state(null);
 
+    let taskIsRunning = $state(false);
+    let databaseData = $state<any[]>([]);
+    async function webTask() {
+        if(taskIsRunning) return;
+        taskIsRunning = true;
+        await tick();
+        startTask = true;
+    }
+
+    let startScanDb = $state(false);
+    let startPrinting = $state(false);
+    async function schedulerTask() {
+        startTask = false;
+        if(databaseData && databaseData.length == 0) {
+            startScanDb = true;
+        } else {
+            startPrinting = true;
+        }
+
+    }
+
     const interval = useInterval(() => intervalSetting, {
         immediate: false,
-        callback: async () => {
-            startScan = true;
-        },
+        callback: ()=> webTask(),
     });
 
-    $inspect(startScan)
+    let durationAnimation = $derived((intervalSetting/1000) - 1)
 </script>
 
 <Navbar>
@@ -298,17 +318,51 @@
                     </div>
 
                     <AnimatedBeam
-                        duration={intervalSetting/1000}
-                        trigger={startScan}
+                        duration={durationAnimation}
+                        trigger={startTask}
                         pathColor="black"
+                        startXOffset={60}
+                        endXOffset={-50}
                         bind:containerRef
                         bind:fromRef={webClient}
                         gradientStartColor="#2b7cff"
                         gradientStopColor="#00e5ff"
                         pathWidth={4}
                         bind:toRef={scheduler}
+                        onAnimationComplete={() => schedulerTask()}
+                    />
+                    <AnimatedBeam
+                        duration={durationAnimation}
+                        trigger={startScanDb}
+                        pathColor="black"
+                        startXOffset={60}
+                        endXOffset={-50}
+                        bind:containerRef
+                        bind:fromRef={scheduler}
+                        bind:toRef={fetchingRef}
+                        gradientStartColor="#2b7cff"
+                        gradientStopColor="#00e5ff"
+                        pathWidth={4}
                         onAnimationComplete={() => {
-                            startScan = false;
+                            startScanDb = false;
+                            taskIsRunning = false;
+                        }}
+                    />
+                    <AnimatedBeam
+                        duration={durationAnimation}
+                        trigger={startPrinting}
+                        pathColor="black"
+                        startYOffset={35}
+                        endYOffset={-35}
+                        bind:containerRef
+                        bind:fromRef={scheduler}
+                        bind:toRef={dataListRef}
+                        gradientStartColor="#2b7cff"
+                        gradientStopColor="#00e5ff"
+                        pathWidth={4}
+                        onAnimationComplete={() => {
+                            startPrinting = false;
+                            taskIsRunning = false;
                         }}
                     />
                 </div>

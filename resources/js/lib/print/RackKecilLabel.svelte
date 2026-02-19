@@ -1,6 +1,5 @@
 <script lang="ts">
     import AutoFitText from '$lib/print/text/AutoFitText.svelte';
-    import { CircleCheck } from '@lucide/svelte';
     import QRCodeGen from '$lib/print/QRCodeGen.svelte';
     import { formatCode10 } from '$lib/print/text/text-formatter.ts';
 

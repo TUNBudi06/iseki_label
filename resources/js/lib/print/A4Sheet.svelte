@@ -5,7 +5,6 @@
     import PalletAssyLabel from '$lib/print/PalletAssyLabel.svelte';
 
     let {
-        children = null,
         class: className = '',
         ref = $bindable(),
         sheet,

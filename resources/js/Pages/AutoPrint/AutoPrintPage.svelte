@@ -4,9 +4,10 @@
         type PrintModuleState,
     } from '$lib/print-module-svelte.ts';
     import * as NativeSelect from '$shadcn/components/ui/native-select';
-    import { onMount } from 'svelte';
+    import {onMount, tick} from 'svelte';
     import Navbar from '$/Layouts/Navbar.svelte';
     import * as Card from '$shadcn/components/ui/card';
+    import * as Field from '$shadcn/components/ui/field';
     import type { Printer as PrinterType } from '$lib/print-module.ts';
     import {
         PrinterCheck as PCIcon,
@@ -14,15 +15,15 @@
         SquareIcon,
     } from '@lucide/svelte';
     import { Button } from '$shadcn/components/ui/button';
-    import { toast } from 'svelte-sonner';
-    import AnimatedBeam from '$lib/Beam/AnimatedBeam.svelte';
     import BeamPrinter from '$/Pages/AutoPrint/BeamPrinter.svelte';
+    import {useInterval} from "runed";
+    import {Input} from "$shadcn/components/ui/input";
 
     let printerState = $state<PrintModuleState | null>(null);
     let mounted = $state(false);
     let usedPrinter = $state<string | null>(null);
     let printerUsedState = $state<PrinterType | null>(null);
-    let isPrintingAuto = $state(false);
+    let intervalSetting = $state<number>(5000);
 
     const printer = printModule();
 
@@ -49,19 +50,26 @@
         mounted = true;
     });
 
-    async function startAutoPrint() {
-        if (!printerState) {
-            toast.error(
-                'Printer state is not initialized yet. Please wait and try again.',
-            );
-            return;
-        }
-        isPrintingAuto = true;
+
+    let client = $state({
+        active: false,
+        webreader: false
+    })
+    async function mainflow(){
+        client.active = true
+        await tick()
+        client.active = false
+        client.webreader = true
+        await tick()
+        client.webreader = false
     }
 
-    async function stopAutoPrint() {
-        isPrintingAuto = false;
-    }
+    const interval = useInterval(()=>intervalSetting,{
+        immediate: false,
+        callback: async () => {
+            await mainflow();
+        }
+    })
 </script>
 
 <Navbar>
@@ -154,24 +162,31 @@
         <Card.Root>
             <Card.Header>
                 <Card.Title class="text-2xl">Auto Print Service</Card.Title>
-                {#if isPrintingAuto}
+                {#if interval.isActive}
                     <Button
                         variant="outline"
-                        onclick={stopAutoPrint}
+                        onclick={()=>interval.pause()}
                         class="border-orange-300 w-40"
                         ><SquareIcon class="text-green-800" /> Stop</Button
                     >
                 {:else}
                     <Button
                         variant="outline"
-                        onclick={startAutoPrint}
+                        onclick={() =>interval.resume()}
                         class="border-orange-300 w-40"
                         ><PlayIcon class="text-green-800" /> Start</Button
                     >
                 {/if}
+                <Field.Field>
+                    <Field.Label for="interval">Interval</Field.Label>
+                    <Input id="interval" bind:value={intervalSetting} autocomplete="on" placeholder="Evil Rabbit" />
+                    <Field.Description>
+                        Set the interval for auto print checking, in milliseconds.
+                    </Field.Description>
+                </Field.Field>
             </Card.Header>
             <Card.Content class="bg-pink-500/40">
-                <BeamPrinter active={isPrintingAuto} />
+                <BeamPrinter active={client.active} webreader={client.webreader} />
             </Card.Content>
         </Card.Root>
     </div>

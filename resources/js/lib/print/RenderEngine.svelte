@@ -3,11 +3,9 @@
     import A4Sheet from '$lib/print/A4Sheet.svelte';
     import jsPDF from 'jspdf';
     import html2canvas from 'html2canvas-pro';
-    import { onMount } from 'svelte';
 
-    let { sheets, ids } = $props();
+    let { sheets } = $props();
 
-    let isGenerating = $state(false);
     let printArea: HTMLElement | null = null;
 
     async function printMultiPagePDF() {
@@ -123,7 +121,7 @@
                 .toISOString()
                 .replace(/[:.]/g, '-')
                 .slice(0, -5);
-            // pdf.save(`iseki-labels-${sheets.length}pages-${timestamp}.pdf`);
+            pdf.save(`iseki-labels-${sheets.length}pages-${timestamp}.pdf`);
 
             alert(`PDF generated successfully with ${sheets.length} pages!`);
         } catch (error) {

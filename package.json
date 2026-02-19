@@ -60,6 +60,8 @@
         "html2canvas-pro": "^1.6.7",
         "html2pdf.js": "^0.14.0",
         "jspdf": "^4.1.0",
-        "qrcode": "^1.5.4"
+        "qrcode": "^1.5.4",
+        "runed": "^0.37.1",
+        "svelte-motion": "^0.12.2"
     }
 }

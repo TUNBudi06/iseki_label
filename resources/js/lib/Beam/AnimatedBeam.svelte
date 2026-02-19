@@ -1,77 +1,86 @@
-<!-- lib/components/AnimatedBeam.svelte -->
 <script lang="ts">
-    import { cn } from "$shadcn/utils";
-    import { tick, untrack } from "svelte";
-    import { Motion } from "svelte-motion";
+    import { cn } from '$shadcn/utils';
+    import { untrack } from 'svelte';
+    import { M } from 'motion-start';
 
     interface Props {
-        class?: string;
-        containerRef?: HTMLElement;
-        fromRef?: HTMLElement;
-        toRef?: HTMLElement;
+        class?: any;
+        containerRef: any;
+        fromRef: any;
+        toRef: any;
         curvature?: number;
-        duration?: number;          // Time for one meteor to travel
+        reverse?: boolean;
+        duration?: number;
         delay?: number;
-        pathColor?: string;         // Background path color
-        pathWidth?: number;         // Meteor core thickness
-        pathOpacity?: number;       // Background path opacity
-        gradientStartColor?: string; // Meteor head color
-        gradientStopColor?: string;  // Glow/trail color
+        pathColor?: string;
+        pathWidth?: number;
+        pathOpacity?: number;
+        gradientStartColor?: string;
+        gradientStopColor?: string;
         startXOffset?: number;
         startYOffset?: number;
         endXOffset?: number;
         endYOffset?: number;
-        static?: boolean;           // Continuous meteor shower
-        trigger?: boolean;          // Fire one meteor on rising edge
-        reverse?: boolean;          // Direction: false = A→B, true = B→A
-        onCompleted?: () => void;
+        static?: boolean;          // ← NEW
+        trigger?: boolean;         // ← NEW
+        onAnimationStart?: () => void;  // ← NEW
+        onAnimationComplete?: () => void; // ← NEW
     }
 
     let {
-        class: className = "",
-        containerRef,
-        fromRef,
-        toRef,
+        class: className = '',
+        containerRef = $bindable(null),
+        fromRef = $bindable(null),
+        toRef = $bindable(null),
         curvature = 0,
-        duration = 1.2,
+        reverse = false,
+        duration = Math.random() * 3 + 4,
         delay = 0,
-        pathColor = "gray",
-        pathWidth = 4,
-        pathOpacity = 0.1,
-        gradientStartColor = "#ffaa40",
-        gradientStopColor = "#9c40ff",
+        pathColor = 'gray',
+        pathWidth = 2,
+        pathOpacity = 0.2,
+        gradientStartColor = '#ffaa40',
+        gradientStopColor = '#9c40ff',
         startXOffset = 0,
         startYOffset = 0,
         endXOffset = 0,
         endYOffset = 0,
-        static: isStatic = false,
-        trigger = false,
-        reverse = false,
-        onCompleted,
+        static: isStatic = false,   // defaults to static mode
+        trigger = false,            // for one-shot
+        onAnimationStart,
+        onAnimationComplete
     }: Props = $props();
 
     let id = $state(crypto.randomUUID().slice(0, 8));
-    let pathD = $state("");
-    let pathLength = $state(1);
+    let pathD = $state('');
     let svgDimensions = $state({ width: 0, height: 0 });
     let isReady = $state(false);
     let isAnimating = $state(false);
     let lastTrigger = $state(false);
     let animationKey = $state(0);
 
-    // easeOutExpo: https://easings.net/#easeOutExpo → f(x) = x === 1 ? 1 : 1 - Math.pow(2, -10 * x)
-    const easeOutExpo = [0.16, 1, 0.3, 1];
+    // Gradient coordinates
+    let gradientCoordinates = $derived(
+        reverse
+            ? {
+                x1: ['90%', '-10%'],
+                x2: ['100%', '0%'],
+                y1: ['0%', '0%'],
+                y2: ['0%', '0%']
+            }
+            : {
+                x1: ['10%', '110%'],
+                x2: ['0%', '100%'],
+                y1: ['0%', '0%'],
+                y2: ['0%', '0%']
+            }
+    );
 
     function updatePath() {
         if (!containerRef || !fromRef || !toRef) {
             isReady = false;
             return;
         }
-        if (!document.contains(fromRef) || !document.contains(toRef)) {
-            isReady = false;
-            return;
-        }
-
         const containerRect = containerRef.getBoundingClientRect();
         const rectA = fromRef.getBoundingClientRect();
         const rectB = toRef.getBoundingClientRect();
@@ -94,43 +103,23 @@
         const controlY = startY - curvature;
         pathD = `M ${startX},${startY} Q ${(startX + endX) / 2},${controlY} ${endX},${endY}`;
         isReady = true;
-
-        // Measure path length for dash animation
-        const tempSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        const tempPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        tempPath.setAttribute("d", pathD);
-        tempSvg.appendChild(tempPath);
-        document.body.appendChild(tempSvg);
-        pathLength = tempPath.getTotalLength() || 1;
-        document.body.removeChild(tempSvg);
     }
 
-    // Rising edge detection
+    // Rising edge detection for trigger mode
     $effect(() => {
         if (!isStatic && trigger && !lastTrigger) {
             untrack(() => {
                 animationKey++;
                 isAnimating = true;
+                onAnimationStart?.();
             });
         }
         lastTrigger = trigger;
     });
 
-    // Auto-reset after one-shot
-    $effect(() => {
-        if (isAnimating && !isStatic) {
-            const t = setTimeout(() => {
-                isAnimating = false;
-                onCompleted?.();
-            }, (delay + duration) * 1000);
-            return () => clearTimeout(t);
-        }
-    });
-
     // Init & resize
     $effect(() => {
         updatePath();
-        if (!isReady) tick().then(updatePath);
 
         const ro = new ResizeObserver(updatePath);
         if (containerRef) ro.observe(containerRef);
@@ -138,11 +127,6 @@
         if (toRef) ro.observe(toRef);
         return () => ro.disconnect();
     });
-
-    // Compute dash offset based on direction
-    let initialOffset = $derived(reverse ? pathLength : -pathLength * 0.12);
-    let finalOffset = $derived(reverse ? -pathLength * 0.12 : pathLength);
-    let dashSize = $derived(pathLength * 0.12); // 12% = compact meteor
 </script>
 
 <svg
@@ -150,97 +134,103 @@
     width={svgDimensions.width}
     height={svgDimensions.height}
     xmlns="http://www.w3.org/2000/svg"
-    class={cn("pointer-events-none absolute left-0 top-0", className)}
+    class={cn('pointer-events-none absolute top-0 left-0 transform-gpu', className)}
     viewBox={`0 0 ${svgDimensions.width} ${svgDimensions.height}`}
 >
     {#if isReady && pathD}
-        <!-- Subtle background path -->
+        <!-- Background path -->
         <path
             d={pathD}
             stroke={pathColor}
-            stroke-width={1}
+            stroke-width={pathWidth}
             stroke-opacity={pathOpacity}
             stroke-linecap="round"
         />
 
-        <!-- STATIC: Continuous meteor shower -->
+        <!-- Static: infinite beam -->
         {#if isStatic}
-            <!-- Core meteor -->
-            <Motion
-                initial={{ strokeDashoffset: initialOffset }}
-                animate={{ strokeDashoffset: finalOffset }}
-                transition={{
-                    duration: duration * 0.9,
-                    delay,
-                    ease: easeOutExpo,
-                    repeat: Infinity,
-                    repeatDelay: duration * 0.3 // Gap between meteors
-                }}
-                attr
-                let:motion
-            >
-                <path
-                    d={pathD}
-                    stroke={gradientStartColor}
-                    stroke-width={pathWidth}
-                    stroke-linecap="round"
-                    stroke-dasharray="{dashSize} {pathLength}"
-                    use:motion
-                />
-            </Motion>
+            <path
+                d={pathD}
+                stroke-width={pathWidth}
+                stroke={`url(#${id}-static)`}
+                stroke-linecap="round"
+            />
+            <defs>
+                <M.linearGradient
+                    id={`${id}-static`}
+                    gradientUnits="userSpaceOnUse"
+                    class="transform-gpu"
+                    initial={{
+						x1: '0%',
+						x2: '0%',
+						y1: '0%',
+						y2: '0%'
+					}}
+                    animate={{
+						x1: gradientCoordinates.x1,
+						x2: gradientCoordinates.x2,
+						y1: gradientCoordinates.y1,
+						y2: gradientCoordinates.y2
+					}}
+                    transition={{
+						delay,
+						duration,
+						ease: [0.16, 1, 0.3, 1],
+						repeat: Infinity
+					}}
+                    onAnimationStart={onAnimationStart}
+                    onAnimationComplete={onAnimationComplete}
+                >
+                    <stop offset="0%" stop-color={gradientStartColor} stop-opacity="0" />
+                    <stop offset="0%" stop-color={gradientStartColor} />
+                    <stop offset="32.5%" stop-color={gradientStopColor} />
+                    <stop offset="100%" stop-color={gradientStopColor} stop-opacity="0" />
+                </M.linearGradient>
+            </defs>
 
-            <!-- Glow trail -->
-            <Motion
-                initial={{ strokeDashoffset: initialOffset }}
-                animate={{ strokeDashoffset: finalOffset }}
-                transition={{
-                    duration: duration * 0.9,
-                    delay: delay + 0.05,
-                    ease: easeOutExpo,
-                    repeat: Infinity,
-                    repeatDelay: duration * 0.3
-                }}
-                attr
-                let:motion
-            >
-                <path
-                    d={pathD}
-                    stroke={gradientStopColor}
-                    stroke-width={pathWidth * 2}
-                    stroke-opacity={0.5}
-                    stroke-linecap="round"
-                    stroke-dasharray="{dashSize * 1.5} {pathLength}"
-                    use:motion
-                />
-            </Motion>
-
-            <!-- TRIGGER: One-shot meteor -->
+            <!-- Trigger: one-shot beam -->
         {:else if isAnimating}
             {#key animationKey}
-                <Motion
-                    initial={{ strokeDashoffset: initialOffset }}
-                    animate={{ strokeDashoffset: finalOffset }}
-                    transition={{
-                        duration,
-                        delay,
-                        ease: easeOutExpo
-                    }}
-                    attr
-                    let:motion
-                    on:animationComplete={() => {
-                        isAnimating = false;
-                        onCompleted?.();
-                    }}
-                >
-                    <path
-                        d={pathD}
-                        stroke={gradientStartColor}
-                        stroke-width={pathWidth}
-                        stroke-linecap="round"
-                        stroke-dasharray="{dashSize} {pathLength}"
-                        use:motion
-                    />
-                </Motion>
+                <path
+                    d={pathD}
+                    stroke-width={pathWidth}
+                    stroke={`url(#${id}-${animationKey})`}
+                    stroke-linecap="round"
+                />
+                <defs>
+                    <M.linearGradient
+                        id={`${id}-${animationKey}`}
+                        gradientUnits="userSpaceOnUse"
+                        class="transform-gpu"
+                        initial={{
+							x1: '0%',
+							x2: '0%',
+							y1: '0%',
+							y2: '0%'
+						}}
+                        animate={{
+							x1: gradientCoordinates.x1,
+							x2: gradientCoordinates.x2,
+							y1: gradientCoordinates.y1,
+							y2: gradientCoordinates.y2
+						}}
+                        transition={{
+							delay,
+							duration,
+							ease: [0.16, 1, 0.3, 1]
+						}}
+                        onAnimationStart={onAnimationStart}
+                        onAnimationComplete={() => {
+							isAnimating = false;
+							onAnimationComplete?.();
+						}}
+                    >
+                        <stop offset="0%" stop-color={gradientStartColor} stop-opacity="0" />
+                        <stop offset="0%" stop-color={gradientStartColor} />
+                        <stop offset="32.5%" stop-color={gradientStopColor} />
+                        <stop offset="100%" stop-color={gradientStopColor} stop-opacity="0" />
+                    </M.linearGradient>
+                </defs>
             {/key}
         {/if}
     {/if}

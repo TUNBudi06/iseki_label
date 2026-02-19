@@ -77,6 +77,7 @@
             toRef={scheduleNode}
             static={true}
             duration={2}
+            pathWidth={2}
             gradientStartColor="#3b82f6"
             gradientStopColor="#8b5cf6"
         />

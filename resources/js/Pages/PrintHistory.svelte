@@ -11,7 +11,7 @@
         Pagination,
     } from '@vincjo/datatables';
     import { onMount } from 'svelte';
-    import {assetUrl} from "@tunbudi06/inertia-route-helper";
+    import { assetUrl } from '@tunbudi06/inertia-route-helper';
     import { toast } from 'svelte-sonner';
 
     // Interface matching backend QueueLabelPrint model
@@ -44,14 +44,18 @@
 
     const handler = new TableHandler<HistoryItem>([], {
         rowsPerPage: 10,
-        highlight: true
+        highlight: true,
     });
 
     $effect(() => {
         handler.setRows(localHistoryData);
     });
 
-    let searchQuery = handler.createSearch(['rack_code', 'requested_by', 'area_name']);
+    let searchQuery = handler.createSearch([
+        'rack_code',
+        'requested_by',
+        'area_name',
+    ]);
     let selectedIds = $state<number[]>([]);
     let isDeleting = $state(false);
     let isPrinting = $state(false);
@@ -59,11 +63,11 @@
     // Statistics - computed from local data
     let totalPrinted = $derived(localHistoryData.length);
     let printedToday = $derived(
-        localHistoryData.filter(h => {
+        localHistoryData.filter((h) => {
             const printDate = new Date(h.updated_at).toDateString();
             const today = new Date().toDateString();
             return printDate === today;
-        }).length
+        }).length,
     );
 
     // Toggle select
@@ -99,14 +103,20 @@
         isPrinting = true;
 
         try {
-            const response = await fetch('/api/print-history/reprint-multiple', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+            const response = await fetch(
+                '/api/print-history/reprint-multiple',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN':
+                            document
+                                .querySelector('meta[name="csrf-token"]')
+                                ?.getAttribute('content') || '',
+                    },
+                    body: JSON.stringify({ ids: selectedIds }),
                 },
-                body: JSON.stringify({ ids: selectedIds }),
-            });
+            );
 
             const data = await response.json();
 
@@ -135,7 +145,10 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector('meta[name="csrf-token"]')
+                            ?.getAttribute('content') || '',
                 },
             });
 
@@ -168,7 +181,10 @@
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector('meta[name="csrf-token"]')
+                            ?.getAttribute('content') || '',
                 },
             });
 
@@ -209,7 +225,10 @@
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector('meta[name="csrf-token"]')
+                            ?.getAttribute('content') || '',
                 },
                 body: JSON.stringify({ ids: selectedIds }),
             });
@@ -219,7 +238,9 @@
             if (data.success) {
                 toast.success(data.message);
                 // Remove from local state
-                localHistoryData = localHistoryData.filter((h) => !selectedIds.includes(h.id));
+                localHistoryData = localHistoryData.filter(
+                    (h) => !selectedIds.includes(h.id),
+                );
                 selectedIds = [];
             } else {
                 toast.error(data.message || 'Gagal menghapus label');
@@ -234,7 +255,9 @@
 
     // Refresh data
     function refreshData() {
-        router.reload({ only: ['historyData', 'printedToday', 'totalPrinted'] });
+        router.reload({
+            only: ['historyData', 'printedToday', 'totalPrinted'],
+        });
     }
 
     onMount(() => {
@@ -246,7 +269,6 @@
 
 <Navbar>
     <div class="container mx-auto p-6 space-y-6">
-
         <!-- Header -->
         <div class="flex items-center justify-between">
             <div>
@@ -432,7 +454,9 @@
                                     >
                                         {index + 1}
                                     </Table.Cell>
-                                    <Table.Cell class="font-bold text-green-900">
+                                    <Table.Cell
+                                        class="font-bold text-green-900"
+                                    >
                                         {@html item.rack_code}
                                     </Table.Cell>
                                     <Table.Cell>
@@ -446,7 +470,9 @@
                                                     .join('')
                                                     .toUpperCase()}
                                             </span>
-                                            <span>{@html item.requested_by}</span>
+                                            <span
+                                                >{@html item.requested_by}</span
+                                            >
                                         </div>
                                     </Table.Cell>
                                     <Table.Cell class="text-center">
@@ -457,7 +483,9 @@
                                         </span>
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <span class="text-sm capitalize">{item.label_type}</span>
+                                        <span class="text-sm capitalize"
+                                            >{item.label_type}</span
+                                        >
                                     </Table.Cell>
                                     <Table.Cell class="text-sm text-gray-600">
                                         {new Date(
@@ -465,7 +493,9 @@
                                         ).toLocaleString('id-ID')}
                                     </Table.Cell>
                                     <Table.Cell class="text-sm">
-                                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                                        <span
+                                            class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800"
+                                        >
                                             ✅ {new Date(
                                                 item.updated_at,
                                             ).toLocaleString('id-ID', {
@@ -484,7 +514,8 @@
                                             <Button
                                                 onclick={() =>
                                                     reprintSingle(item.id)}
-                                                disabled={isPrinting || isDeleting}
+                                                disabled={isPrinting ||
+                                                    isDeleting}
                                                 size="sm"
                                                 class="bg-green-600 hover:bg-green-700"
                                                 title="Reprint label ini"
@@ -494,7 +525,8 @@
                                             <Button
                                                 onclick={() =>
                                                     deleteFromHistory(item.id)}
-                                                disabled={isPrinting || isDeleting}
+                                                disabled={isPrinting ||
+                                                    isDeleting}
                                                 size="sm"
                                                 variant="destructive"
                                                 title="Hapus dari history"
@@ -530,20 +562,21 @@
                     </h4>
                     <ul class="text-sm text-green-800 space-y-1">
                         <li>
-                            • <strong>Reprint</strong> - Cetak ulang label yang sudah pernah dicetak
+                            • <strong>Reprint</strong> - Cetak ulang label yang sudah
+                            pernah dicetak
                         </li>
                         <li>
-                            • <strong>Delete</strong> - Hapus dari history (tidak mempengaruhi data asli)
+                            • <strong>Delete</strong> - Hapus dari history (tidak
+                            mempengaruhi data asli)
                         </li>
                         <li>
-                            • History akan disimpan untuk audit trail dan tracking
+                            • History akan disimpan untuk audit trail dan
+                            tracking
                         </li>
                         <li>• Data akan auto-refresh setiap 30 detik</li>
                     </ul>
                 </div>
             </div>
         </div>
-
     </div>
 </Navbar>
-

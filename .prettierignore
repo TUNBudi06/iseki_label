@@ -14,7 +14,6 @@
 .env
 .env.*
 *.config.js
-*.config.ts
 
 # IDE and editor files
 /.idea
@@ -22,6 +21,7 @@
 /.fleet
 /.nova
 /.zed
+/.github
 
 # Cache and logs
 .phpunit.result.cache
@@ -40,11 +40,7 @@ yarn-error.log
 /pnpm-lock.yaml
 
 # Laravel specific
-/storage/framework/cache/*
-/storage/framework/sessions/*
-/storage/framework/views/*
-/storage/logs/*
-/storage/app/*
+/storage/*
 
 # Compiled assets
 *.css.map

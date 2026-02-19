@@ -1,4 +1,4 @@
-import { type HealthResponse, PrintAPI, type Printer } from "$lib/print-module";
+import { type HealthResponse, PrintAPI, type Printer } from '$lib/print-module';
 
 export interface PrinterAvailableResponse {
     success: boolean;
@@ -36,12 +36,12 @@ export function printModule(): PrintModuleAPI {
 
     async function load(): Promise<PrintModuleState> {
         let state: PrintModuleState = {
-            hostname: "",
-            os: "",
+            hostname: '',
+            os: '',
             initialized: false,
             default_printer: null,
             printer_list: [],
-            client_id: "",
+            client_id: '',
             isChecking: true,
         };
 
@@ -50,9 +50,9 @@ export function printModule(): PrintModuleAPI {
                 await service.checkHealth();
 
             if (health) {
-                state.hostname = health.hostname ?? "";
-                state.os = health.os ?? "";
-                state.client_id = health.client_id ?? "";
+                state.hostname = health.hostname ?? '';
+                state.os = health.os ?? '';
+                state.client_id = health.client_id ?? '';
             }
 
             const printerRes: PrinterAvailableResponse | null =
@@ -61,13 +61,13 @@ export function printModule(): PrintModuleAPI {
             if (printerRes?.success && Array.isArray(printerRes.printers)) {
                 state.printer_list = printerRes.printers;
                 state.default_printer =
-                    printerRes.printers.find(p => p.default) ?? null;
+                    printerRes.printers.find((p) => p.default) ?? null;
             }
 
             state.initialized = true;
         } catch (e) {
             state.initialized = false;
-            console.error("Failed to initialize print module", e);
+            console.error('Failed to initialize print module', e);
         }
         state.isChecking = false;
 

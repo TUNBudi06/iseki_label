@@ -37,10 +37,14 @@
             {rack}
         </h2>
         <h2 class="border-b-2 font-serif text-red-500 w-full">{codeParser}</h2>
-        <h2 class="border-b-2 text-xs font-normal text-orange-300 font-sans w-full">
+        <h2
+            class="border-b-2 text-xs font-normal text-orange-300 font-sans w-full"
+        >
             <AutoFitText minPt={1} text={name} />
         </h2>
-        <h2 class="border-b-2 w-full font-normal tracking-tighter font-sans text-xs m-y-1">
+        <h2
+            class="border-b-2 w-full font-normal tracking-tighter font-sans text-xs m-y-1"
+        >
             <AutoFitText minPt={1} text={type} />
         </h2>
     </div>
@@ -62,7 +66,11 @@
     >
         <div class="border-b border-black w-full">QR Code</div>
         <div class="w-full text-sm row-span-3">
-            <QRCodeGen data={rack} size={10} class="mx-auto w-[24mm] h-[24mm]" />
+            <QRCodeGen
+                data={rack}
+                size={10}
+                class="mx-auto w-[24mm] h-[24mm]"
+            />
         </div>
     </div>
     <div

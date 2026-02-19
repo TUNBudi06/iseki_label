@@ -21,13 +21,13 @@
         Pagination,
     } from '@vincjo/datatables';
     import { onMount } from 'svelte';
-    import {autoPrint, history as UrlHistory, label} from "$routes/print";
-    import {routeUrl} from "@tunbudi06/inertia-route-helper";
-    import {router} from "@inertiajs/core";
-    import {toast} from "svelte-sonner";
-    import {destroy} from "$routes/api/queue-label-prints";
-    import {markAsPrinted} from "$routes/home";
-    import {useForm} from "@inertiajs/svelte";
+    import { autoPrint, history as UrlHistory, label } from '$routes/print';
+    import { routeUrl } from '@tunbudi06/inertia-route-helper';
+    import { router } from '@inertiajs/core';
+    import { toast } from 'svelte-sonner';
+    import { destroy } from '$routes/api/queue-label-prints';
+    import { markAsPrinted } from '$routes/home';
+    import { useForm } from '@inertiajs/svelte';
 
     // Interface matching backend data structure
     interface QueueItem {
@@ -45,7 +45,11 @@
     }
 
     // Props from backend
-    let { labelNotPrinted = [], totalLabelToday = 0, totalLabelPrinted = 0 } = $props();
+    let {
+        labelNotPrinted = [],
+        totalLabelToday = 0,
+        totalLabelPrinted = 0,
+    } = $props();
 
     // Initialize local state from props - create a PLAIN ARRAY COPY
     // Backend sends object with numeric keys like {1: {...}, 2: {...}}, convert to array
@@ -66,14 +70,18 @@
 
     const handler = new TableHandler<QueueItem>([], {
         rowsPerPage: 10,
-        highlight: true
+        highlight: true,
     });
     $effect(() => {
         handler.setRows(queueData);
     });
 
     let selectedIndexes = $state<number[]>([]); // Use index as identifier
-    let searchQuery = handler.createSearch(['rack_code', 'requested_by', 'area_name']);
+    let searchQuery = handler.createSearch([
+        'rack_code',
+        'requested_by',
+        'area_name',
+    ]);
     let isPrinting = $state(false);
 
     // Statistics from props
@@ -111,14 +119,18 @@
         try {
             // Get rack_codes for selected indexes
             const selectedRackCodes = selectedIndexes.map((item) => {
-                return handler.rows[item].id
+                return handler.rows[item].id;
             });
 
-            router.visit(routeUrl(label({
-                query: {
-                    labels: JSON.stringify(selectedRackCodes)
-                }
-            })));
+            router.visit(
+                routeUrl(
+                    label({
+                        query: {
+                            labels: JSON.stringify(selectedRackCodes),
+                        },
+                    }),
+                ),
+            );
 
             await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -156,11 +168,15 @@
             const labelId = handler.rows[index].id;
 
             // Redirect to print page with single label ID
-            router.visit(routeUrl(label({
-                query: {
-                    labels: JSON.stringify([labelId])
-                }
-            })));
+            router.visit(
+                routeUrl(
+                    label({
+                        query: {
+                            labels: JSON.stringify([labelId]),
+                        },
+                    }),
+                ),
+            );
 
             // Wait a moment then refresh data
             await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -185,11 +201,14 @@
             const labelId = handler.rows[index].id;
 
             // Send delete request to backend
-            const response = await fetch(routeUrl(destroy({id: labelId})), {
+            const response = await fetch(routeUrl(destroy({ id: labelId })), {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector('meta[name="csrf-token"]')
+                            ?.getAttribute('content') || '',
                 },
             });
 
@@ -210,7 +229,7 @@
 
     // Refresh data from backend
 
-    async function reloadOnly(){
+    async function reloadOnly() {
         router.reload({
             only: ['labelNotPrinted', 'totalLabelToday', 'totalLabelPrinted'],
         });
@@ -218,12 +237,16 @@
     async function refreshData() {
         console.log('Refreshing data...');
         await reloadOnly();
-        toast.info('Data refreshed', {duration: 2000});
+        toast.info('Data refreshed', { duration: 2000 });
     }
 
     // Helper function to get user initials
     function getInitials(name: string): string {
-        return name.split(' ',2).map(n => n[0]).join('').toUpperCase();
+        return name
+            .split(' ', 2)
+            .map((n) => n[0])
+            .join('')
+            .toUpperCase();
     }
 
     onMount(() => {
@@ -233,9 +256,9 @@
     });
 
     const markForm = useForm({
-        id: 0
-    })
-    function markDone(index:number) {
+        id: 0,
+    });
+    function markDone(index: number) {
         $markForm.id = handler.rows[index].id;
         $markForm.post(routeUrl(markAsPrinted()), {
             onSuccess: () => {
@@ -244,7 +267,7 @@
             },
             onError: () => {
                 toast.error('Failed to mark label as printed.');
-            }
+            },
         });
     }
 
@@ -258,7 +281,9 @@
         try {
             window.open(pdfGuideUrl, '_blank');
         } catch (e) {
-            toast.error('Unable to open guide. Copy the guide URL and open it manually.');
+            toast.error(
+                'Unable to open guide. Copy the guide URL and open it manually.',
+            );
         }
     }
 
@@ -418,8 +443,8 @@
             </Card.Content>
         </Card.Root>
 
-<!--        create card information and link about automatic printing which when get into reference page need a client or app PDFServerPrinting-->
-<!--        to make sure client is connected and can auto printing self but need standby laptop-->
+        <!--        create card information and link about automatic printing which when get into reference page need a client or app PDFServerPrinting-->
+        <!--        to make sure client is connected and can auto printing self but need standby laptop-->
 
         <!-- Queue Table -->
         <Card.Root>
@@ -447,33 +472,41 @@
                                     />
                                 </Table.Head>
                                 <Table.Head class="w-16 text-center"
-                                >#</Table.Head
+                                    >#</Table.Head
                                 >
                                 <Table.Head>Rack Code</Table.Head>
                                 <Table.Head>Request By</Table.Head>
                                 <Table.Head>Area Name</Table.Head>
                                 <Table.Head class="text-center"
-                                >Quantity</Table.Head
+                                    >Quantity</Table.Head
                                 >
                                 <Table.Head>Label Type</Table.Head>
-                                <Table.Head class="text-center">Priority</Table.Head>
+                                <Table.Head class="text-center"
+                                    >Priority</Table.Head
+                                >
                                 <Table.Head>Created At</Table.Head>
                                 <Table.Head class="text-center"
-                                >Actions</Table.Head
+                                    >Actions</Table.Head
                                 >
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
                             {#each handler.rows as item, index (index)}
                                 <Table.Row
-                                    class="hover:bg-pink-50 transition-colors {selectedIndexes.includes(index)
+                                    class="hover:bg-pink-50 transition-colors {selectedIndexes.includes(
+                                        index,
+                                    )
                                         ? 'bg-pink-50'
-                                        : ''} {item.urgent ? 'border-l-4 border-l-red-500' : ''}"
+                                        : ''} {item.urgent
+                                        ? 'border-l-4 border-l-red-500'
+                                        : ''}"
                                 >
                                     <Table.Cell>
                                         <input
                                             type="checkbox"
-                                            checked={selectedIndexes.includes(index)}
+                                            checked={selectedIndexes.includes(
+                                                index,
+                                            )}
                                             onchange={() => toggleSelect(index)}
                                             class="w-4 h-4 accent-pink-600"
                                         />
@@ -497,7 +530,9 @@
                                         </div>
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <span class="text-sm">{item.area_name || '-'}</span>
+                                        <span class="text-sm"
+                                            >{item.area_name || '-'}</span
+                                        >
                                     </Table.Cell>
                                     <Table.Cell class="text-center">
                                         <span
@@ -507,10 +542,14 @@
                                         </span>
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
-                                            {item.label_type === 'pallet' ? 'bg-purple-100 text-purple-800' :
-                                             item.label_type === 'besar' ? 'bg-blue-100 text-blue-800' :
-                                             'bg-green-100 text-green-800'}">
+                                        <span
+                                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                                            {item.label_type === 'pallet'
+                                                ? 'bg-purple-100 text-purple-800'
+                                                : item.label_type === 'besar'
+                                                  ? 'bg-blue-100 text-blue-800'
+                                                  : 'bg-green-100 text-green-800'}"
+                                        >
                                             {item.label_type.toUpperCase()}
                                         </span>
                                     </Table.Cell>
@@ -535,7 +574,9 @@
                                         ).toLocaleString('id-ID')}
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <div class="flex gap-1 gap-x-4 justify-center">
+                                        <div
+                                            class="flex gap-1 gap-x-4 justify-center"
+                                        >
                                             <Button
                                                 onclick={() => markDone(index)}
                                                 size="sm"
@@ -545,7 +586,8 @@
                                                 <BookmarkCheck />
                                             </Button>
                                             <Button
-                                                onclick={() => printSingle(index)}
+                                                onclick={() =>
+                                                    printSingle(index)}
                                                 disabled={isPrinting}
                                                 size="sm"
                                                 variant="default"
@@ -554,7 +596,8 @@
                                                 🖨️
                                             </Button>
                                             <Button
-                                                onclick={() => deleteItem(index)}
+                                                onclick={() =>
+                                                    deleteItem(index)}
                                                 size="sm"
                                                 variant="destructive"
                                             >
@@ -582,27 +625,50 @@
         <!-- Card: Automatic printing guide (compact, links to autoprint page) -->
         <Card.Root>
             <Card.Content class="p-4">
-                <div class="flex flex-col md:flex-row gap-4 items-start justify-between">
+                <div
+                    class="flex flex-col md:flex-row gap-4 items-start justify-between"
+                >
                     <div class="flex-1">
-                        <h4 class="text-lg font-semibold text-pink-900">Automatic Printing</h4>
+                        <h4 class="text-lg font-semibold text-pink-900">
+                            Automatic Printing
+                        </h4>
                         <p class="text-sm text-gray-600 mt-1">
-                            Fitur Automatic Printing mengirimkan job PDF langsung ke aplikasi klien (PDFServerPrinting) yang berjalan di mesin terdekat. Pastikan klien dijalankan dan siap menerima job sebelum menggunakan fitur ini.
+                            Fitur Automatic Printing mengirimkan job PDF
+                            langsung ke aplikasi klien (PDFServerPrinting) yang
+                            berjalan di mesin terdekat. Pastikan klien
+                            dijalankan dan siap menerima job sebelum menggunakan
+                            fitur ini.
                         </p>
 
                         <div class="mt-3 flex gap-2">
-                            <Button onclick={() => openAutoPrintPage()} size="sm" class="bg-pink-600 hover:bg-pink-700">➡️ Open AutoPrint Page</Button>
+                            <Button
+                                onclick={() => openAutoPrintPage()}
+                                size="sm"
+                                class="bg-pink-600 hover:bg-pink-700"
+                                >➡️ Open AutoPrint Page</Button
+                            >
                         </div>
 
                         <div class="mt-2 text-sm text-gray-700">
-                            <div>Note: AutoPrint page berisi panduan, status koneksi, dan pengaturan host untuk klien printing.</div>
+                            <div>
+                                Note: AutoPrint page berisi panduan, status
+                                koneksi, dan pengaturan host untuk klien
+                                printing.
+                            </div>
                         </div>
                     </div>
 
                     <div class="w-full md:w-1/3 text-sm text-gray-700">
                         <h5 class="font-medium text-pink-900">Saran singkat</h5>
                         <ul class="list-disc pl-5 mt-2 space-y-1">
-                            <li>Jalankan PDF printing client pada mesin yang terhubung ke printer.</li>
-                            <li>Gunakan AutoPrint page untuk mengatur host dan memantau koneksi.</li>
+                            <li>
+                                Jalankan PDF printing client pada mesin yang
+                                terhubung ke printer.
+                            </li>
+                            <li>
+                                Gunakan AutoPrint page untuk mengatur host dan
+                                memantau koneksi.
+                            </li>
                         </ul>
                     </div>
                 </div>

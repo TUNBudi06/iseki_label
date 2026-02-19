@@ -1,8 +1,8 @@
 <!-- lib/components/AnimatedBeam.svelte -->
 <script lang="ts">
-    import { cn } from "$shadcn/utils";
-    import { untrack } from "svelte";
-    import type { Snippet } from "svelte";
+    import { cn } from '$shadcn/utils';
+    import { untrack } from 'svelte';
+    import type { Snippet } from 'svelte';
 
     interface Props {
         class?: string;
@@ -24,23 +24,26 @@
         trigger?: boolean;
         static?: boolean;
         glowIntensity?: number;
-        beamLength?: number; // Panjang beam (0-1 dari total path)
+        beamLength?: number;
+        // Dynamic color props
+        startColor?: string;
+        endColor?: string;
         children?: Snippet;
     }
 
     let {
-        class: className = "",
+        class: className = '',
         containerRef,
         fromRef,
         toRef,
         curvature = 0,
         reverse = false,
         duration = 1.5,
-        pathColor = "gray",
+        pathColor = 'gray',
         pathWidth = 2,
         pathOpacity = 0.2,
-        gradientStartColor = "#ffaa40",
-        gradientStopColor = "#9c40ff",
+        gradientStartColor = '#ffaa40',
+        gradientStopColor = '#9c40ff',
         startXOffset = 0,
         startYOffset = 0,
         endXOffset = 0,
@@ -48,12 +51,19 @@
         trigger = false,
         static: isStatic = false,
         glowIntensity = 5,
-        beamLength = 0.3, // Default 30% dari path
-        children
+        beamLength = 0.3,
+        // Use provided colors or fall back to gradient colors
+        startColor = $bindable(gradientStartColor),
+        endColor = $bindable(gradientStopColor),
+        children,
     }: Props = $props();
 
+    // Reactive colors - update when props change
+    let currentStartColor = $derived(startColor || gradientStartColor);
+    let currentEndColor = $derived(endColor || gradientStopColor);
+
     let id = crypto.randomUUID().slice(0, 8);
-    let pathD = $state("");
+    let pathD = $state('');
     let pathLength = $state(1000);
     let svgDimensions = $state({ width: 0, height: 0 });
 
@@ -76,22 +86,30 @@
             height: containerRect.height,
         };
 
-        const startX = rectA.left - containerRect.left + rectA.width / 2 + startXOffset;
-        const startY = rectA.top - containerRect.top + rectA.height / 2 + startYOffset;
-        const endX = rectB.left - containerRect.left + rectB.width / 2 + endXOffset;
-        const endY = rectB.top - containerRect.top + rectB.height / 2 + endYOffset;
+        const startX =
+            rectA.left - containerRect.left + rectA.width / 2 + startXOffset;
+        const startY =
+            rectA.top - containerRect.top + rectA.height / 2 + startYOffset;
+        const endX =
+            rectB.left - containerRect.left + rectB.width / 2 + endXOffset;
+        const endY =
+            rectB.top - containerRect.top + rectB.height / 2 + endYOffset;
 
         const controlY = startY - curvature;
         pathD = `M ${startX},${startY} Q ${(startX + endX) / 2},${controlY} ${endX},${endY}`;
     }
 
-    // Hitung path length setelah path update
     $effect(() => {
         if (!pathD) return;
-        // Estimate path length (approximation untuk quadratic bezier)
-        const tempSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        const tempPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        tempPath.setAttribute("d", pathD);
+        const tempSvg = document.createElementNS(
+            'http://www.w3.org/2000/svg',
+            'svg',
+        );
+        const tempPath = document.createElementNS(
+            'http://www.w3.org/2000/svg',
+            'path',
+        );
+        tempPath.setAttribute('d', pathD);
         tempSvg.appendChild(tempPath);
         document.body.appendChild(tempSvg);
         pathLength = tempPath.getTotalLength();
@@ -149,7 +167,7 @@
 
     function getGradientStops(progress: number, reverse: boolean) {
         if (reverse) {
-            const offset = 100 - (progress * 120);
+            const offset = 100 - progress * 120;
             return {
                 x1: `${Math.max(0, offset + 10)}%`,
                 x2: `${Math.max(0, offset)}%`,
@@ -164,10 +182,11 @@
     }
 
     let animatedStops = $derived(
-        isAnimating ? getGradientStops(progress, reverse) : { x1: "0%", x2: "0%" }
+        isAnimating
+            ? getGradientStops(progress, reverse)
+            : { x1: '0%', x2: '0%' },
     );
 
-    // Dash array untuk static beam
     let dashArray = $derived(pathLength * beamLength);
     let dashOffset = $derived(pathLength);
 </script>
@@ -178,8 +197,8 @@
     height={svgDimensions.height}
     xmlns="http://www.w3.org/2000/svg"
     class={cn(
-        "pointer-events-none absolute left-0 top-0 transform-gpu",
-        className
+        'pointer-events-none absolute left-0 top-0 transform-gpu',
+        className,
     )}
     viewBox={`0 0 ${svgDimensions.width} ${svgDimensions.height}`}
 >
@@ -193,7 +212,7 @@
         fill="none"
     />
 
-    <!-- Trigger: beam satu kali dengan gradient -->
+    <!-- Trigger: beam satu kali -->
     {#if isAnimating}
         <path
             d={pathD}
@@ -206,14 +225,13 @@
         />
     {/if}
 
-    <!-- Static: beam berjalan terus dengan stroke-dasharray -->
+    <!-- Static: beam berjalan terus -->
     {#if isStatic}
-        <!-- Glow layers dengan dash animation -->
         {#each Array(glowLayers) as _, i}
             <path
                 d={pathD}
                 stroke-width={pathWidth * (3 + i)}
-                stroke={gradientStartColor}
+                stroke={currentStartColor}
                 stroke-opacity={0.3 / (i + 1)}
                 stroke-linecap="round"
                 fill="none"
@@ -232,7 +250,6 @@
             </path>
         {/each}
 
-        <!-- Middle glow -->
         <path
             d={pathD}
             stroke-width={pathWidth * 2}
@@ -254,7 +271,6 @@
             />
         </path>
 
-        <!-- Core bright beam -->
         <path
             d={pathD}
             stroke-width={pathWidth}
@@ -278,44 +294,90 @@
     {/if}
 
     <defs>
-        <!-- Gradient untuk trigger -->
+        <!-- Trigger gradient - uses dynamic colors -->
         {#if isAnimating}
-            <linearGradient
-                id="{id}-trigger"
-                gradientUnits="userSpaceOnUse"
-            >
-                <stop offset="0%" stop-color={gradientStartColor} stop-opacity="0" />
-                <stop offset={animatedStops.x1} stop-color={gradientStartColor} />
-                <stop offset={animatedStops.x2} stop-color={gradientStopColor} />
-                <stop offset="100%" stop-color={gradientStopColor} stop-opacity="0" />
+            <linearGradient id="{id}-trigger" gradientUnits="userSpaceOnUse">
+                <stop
+                    offset="0%"
+                    stop-color={currentStartColor}
+                    stop-opacity="0"
+                />
+                <stop
+                    offset={animatedStops.x1}
+                    stop-color={currentStartColor}
+                />
+                <stop offset={animatedStops.x2} stop-color={currentEndColor} />
+                <stop
+                    offset="100%"
+                    stop-color={currentEndColor}
+                    stop-opacity="0"
+                />
             </linearGradient>
         {/if}
 
-        <!-- Gradient untuk static -->
+        <!-- Static gradients - uses dynamic colors -->
         {#if isStatic}
             <linearGradient
                 id="{id}-static-mid"
                 gradientUnits="userSpaceOnUse"
-                x1="0%" y1="0%" x2="100%" y2="0%"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="0%"
             >
-                <stop offset="0%" stop-color={gradientStartColor} stop-opacity="0" />
-                <stop offset="20%" stop-color={gradientStartColor} stop-opacity="0.8" />
-                <stop offset="50%" stop-color={gradientStopColor} stop-opacity="0.9" />
-                <stop offset="80%" stop-color={gradientStopColor} stop-opacity="0.8" />
-                <stop offset="100%" stop-color={gradientStopColor} stop-opacity="0" />
+                <stop
+                    offset="0%"
+                    stop-color={currentStartColor}
+                    stop-opacity="0"
+                />
+                <stop
+                    offset="20%"
+                    stop-color={currentStartColor}
+                    stop-opacity="0.8"
+                />
+                <stop
+                    offset="50%"
+                    stop-color={currentEndColor}
+                    stop-opacity="0.9"
+                />
+                <stop
+                    offset="80%"
+                    stop-color={currentEndColor}
+                    stop-opacity="0.8"
+                />
+                <stop
+                    offset="100%"
+                    stop-color={currentEndColor}
+                    stop-opacity="0"
+                />
             </linearGradient>
 
             <linearGradient
                 id="{id}-static-core"
                 gradientUnits="userSpaceOnUse"
-                x1="0%" y1="0%" x2="100%" y2="0%"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="0%"
             >
                 <stop offset="0%" stop-color="#ffffff" stop-opacity="0" />
-                <stop offset="15%" stop-color={gradientStartColor} stop-opacity="1" />
+                <stop
+                    offset="15%"
+                    stop-color={currentStartColor}
+                    stop-opacity="1"
+                />
                 <stop offset="40%" stop-color="#ffffff" stop-opacity="0.9" />
-                <stop offset="60%" stop-color={gradientStopColor} stop-opacity="1" />
+                <stop
+                    offset="60%"
+                    stop-color={currentEndColor}
+                    stop-opacity="1"
+                />
                 <stop offset="85%" stop-color="#ffffff" stop-opacity="0.9" />
-                <stop offset="100%" stop-color={gradientStopColor} stop-opacity="0" />
+                <stop
+                    offset="100%"
+                    stop-color={currentEndColor}
+                    stop-opacity="0"
+                />
             </linearGradient>
         {/if}
     </defs>
@@ -326,12 +388,11 @@
 <style>
     .glow-core {
         filter: drop-shadow(0 0 2px currentColor)
-        drop-shadow(0 0 4px currentColor)
-        drop-shadow(0 0 8px currentColor);
+            drop-shadow(0 0 4px currentColor) drop-shadow(0 0 8px currentColor);
     }
 
     .glow-mid {
         filter: drop-shadow(0 0 6px currentColor)
-        drop-shadow(0 0 12px currentColor);
+            drop-shadow(0 0 12px currentColor);
     }
 </style>

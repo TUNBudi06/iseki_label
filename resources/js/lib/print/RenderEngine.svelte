@@ -1,18 +1,18 @@
 <script lang="ts">
-    import {Button} from "$shadcn/components/ui/button";
-    import A4Sheet from "$lib/print/A4Sheet.svelte";
-    import jsPDF from "jspdf";
-    import html2canvas from "html2canvas-pro";
-    import {onMount} from "svelte";
-    import {PrintModule} from "$lib/print-module.ts";
+    import { Button } from '$shadcn/components/ui/button';
+    import A4Sheet from '$lib/print/A4Sheet.svelte';
+    import jsPDF from 'jspdf';
+    import html2canvas from 'html2canvas-pro';
+    import { onMount } from 'svelte';
+    import { PrintModule } from '$lib/print-module.ts';
 
-    let { sheets,ids} = $props();
+    let { sheets, ids } = $props();
 
     let isGenerating = $state(false);
     let printArea: HTMLElement | null = null;
 
     const printModule = new PrintModule();
-    onMount(()=>{
+    onMount(() => {
         (async () => {
             await printModule.init();
             await printModule.startAutoPing();
@@ -21,7 +21,7 @@
 
         // Return a cleanup function so the auto-ping stops on unmount
         return () => printModule.stopAutoPing();
-    })
+    });
 
     async function printMultiPagePDF() {
         if (!printArea) return;
@@ -99,7 +99,7 @@
     }
 
     async function singlePage(id: string) {
-        const element = document.querySelector("."+id) as HTMLElement;
+        const element = document.querySelector('.' + id) as HTMLElement;
         if (!element) return;
         isGenerating = true;
 
@@ -147,20 +147,29 @@
         }
     }
 </script>
+
 <div class="space-y-6 w-full">
     <div class="flex justify-between">
-        <Button onclick={printMultiPagePDF} class="w-lg">Download All Pages PDF</Button>
+        <Button onclick={printMultiPagePDF} class="w-lg"
+            >Download All Pages PDF</Button
+        >
     </div>
-    <div bind:this={printArea} class="w-full bg-pink-300/60 pt-20 pb-10 items-center flex flex-col gap-y-6 z-0 overflow-x-scroll">
+    <div
+        bind:this={printArea}
+        class="w-full bg-pink-300/60 pt-20 pb-10 items-center flex flex-col gap-y-6 z-0 overflow-x-scroll"
+    >
         {#each sheets as sheet, index (index)}
-            <div class="w-[210mm] max-w-full mx-auto px-6 md:px-0  space-y-2 pb-10">
-                <A4Sheet sheet={sheet.labels} class="A4-print-page A4-{index}"/>
-                <Button class="w-full" onclick={()=>singlePage("A4-"+index)}>Download This Page Only</Button>
+            <div
+                class="w-[210mm] max-w-full mx-auto px-6 md:px-0 space-y-2 pb-10"
+            >
+                <A4Sheet
+                    sheet={sheet.labels}
+                    class="A4-print-page A4-{index}"
+                />
+                <Button class="w-full" onclick={() => singlePage('A4-' + index)}
+                    >Download This Page Only</Button
+                >
             </div>
         {/each}
     </div>
 </div>
-
-
-
-

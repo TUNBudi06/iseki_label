@@ -1,7 +1,7 @@
 <script lang="ts">
     import AutoFitText from '$lib/print/text/AutoFitText.svelte';
     import QRCodeGen from '$lib/print/QRCodeGen.svelte';
-    import {formatCode10} from "$lib/print/text/text-formatter.ts";
+    import { formatCode10 } from '$lib/print/text/text-formatter.ts';
 
     let {
         rack = 'MM-M008',

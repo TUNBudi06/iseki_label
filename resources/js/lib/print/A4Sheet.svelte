@@ -35,7 +35,6 @@
                 newRack.push(data);
             }
         }
-        console.log(newRack);
         return newRack;
     });
 </script>

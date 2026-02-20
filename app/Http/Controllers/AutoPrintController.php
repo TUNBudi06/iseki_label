@@ -18,6 +18,7 @@ class AutoPrintController extends Controller
         $timestamp = now()->getTimestamp();
         $autoPrintList = QueueLabelPrint::where('auto_print', true)
             ->where('printed', false)
+            ->with('RackList')
             ->get();
 
         debugbar()->log($autoPrintList);

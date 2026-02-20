@@ -7,6 +7,7 @@
     let { sheets } = $props();
 
     let printArea: HTMLElement | null = null;
+    let isGenerating = $state(false);
 
     async function printMultiPagePDF() {
         if (!printArea) return;

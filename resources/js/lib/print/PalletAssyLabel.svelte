@@ -37,21 +37,21 @@
             class="basis-[52mm] content-center border-r border-black text-center justify-center border-b"
         >
             <span class="font-bold font-serif text-2xl tracking-wide"
-                ><AutoFitText minPt={1} text={codeParser} /></span
+                ><AutoFitText minPx={12} text={codeParser} /></span
             >
         </div>
         <div
             class="basis-[52mm] content-center border-r border-black text-center justify-center border-b"
         >
             <span class="font-bold text-md tracking-tight"
-                ><AutoFitText minPt={1} text={name} /></span
+                ><AutoFitText minPx={12} text={name} /></span
             >
         </div>
         <div
             class="basis-[52mm] content-center border-r border-black text-center justify-center border-b"
         >
             <span class="font-bold text-md tracking-tight"
-                ><AutoFitText minPt={1} text={vendor} /></span
+                ><AutoFitText minPx={12} text={vendor} /></span
             >
         </div>
     </div>
@@ -65,7 +65,7 @@
             class="basis-[130mm] content-center border-r border-black text-center justify-center border-b"
         >
             <span class="font-bold text-lg tracking-tight"
-                ><AutoFitText minPt={1} text={type} /></span
+                ><AutoFitText minPx={12} text={type} /></span
             >
         </div>
     </div>

@@ -5,7 +5,7 @@
 
     let {
         rack = 'MM-M008',
-        code = '18326112102D',
+        code = '1832612102D',
         name = 'LABEL/CONTROL/SUB',
     } = $props();
 
@@ -20,17 +20,17 @@
             >
                 <span class="font-bold tracking-tighter"
                     ><AutoFitText
-                        minPt={1}
-                        class="text-nowrap"
+                        minPx={1}
+                        maxPx={12}
                         text={codeParser}
-                    /></span
-                >
+                    />
+                </span>
             </div>
             <div
                 class="w-[31mm] h-full content-center text-center justify-center-safe border-r border-black"
             >
                 <span class="font-bold text-xs"
-                    ><AutoFitText minPt={1} text={name} /></span
+                    ><AutoFitText minPx={1} text={name} /></span
                 >
             </div>
         </div>

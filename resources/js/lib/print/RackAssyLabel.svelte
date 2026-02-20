@@ -40,12 +40,12 @@
         <h2
             class="border-b-2 text-xs font-normal text-orange-300 font-sans w-full"
         >
-            <AutoFitText minPt={1} text={name} />
+            <AutoFitText minPx={12} maxPx={20} text={name} />
         </h2>
         <h2
             class="border-b-2 w-full font-normal tracking-tighter font-sans text-xs m-y-1"
         >
-            <AutoFitText minPt={1} text={type} />
+            <AutoFitText minPx={12} maxPx={18} text={type} />
         </h2>
     </div>
     <div
@@ -53,12 +53,12 @@
     >
         <div class="border-b border-black w-full">Remark</div>
         <div class="border-b-2 w-full font-sans font-normal tracking-tight">
-            <AutoFitText minPt={1} text={timbangan ?? ''} />
+            <AutoFitText minPx={15} text={timbangan ?? ''} />
         </div>
         <div
             class="w-full text-sm font-normal font-sans row-span-2 tracking-tighter"
         >
-            <AutoFitText minPt={1} text={vendor} />
+            <AutoFitText minPx={12} maxPx={16} fillSpace={true} balance={false} text={vendor} />
         </div>
     </div>
     <div

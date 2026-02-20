@@ -201,10 +201,18 @@
                     {onAnimationStart}
                     {onAnimationComplete}
                 >
-                    <stop offset="0%" stop-color={gradientStartColor} stop-opacity="0" />
+                    <stop
+                        offset="0%"
+                        stop-color={gradientStartColor}
+                        stop-opacity="0"
+                    />
                     <stop offset="0%" stop-color={gradientStartColor} />
                     <stop offset="32.5%" stop-color={gradientStopColor} />
-                    <stop offset="100%" stop-color={gradientStopColor} stop-opacity="0" />
+                    <stop
+                        offset="100%"
+                        stop-color={gradientStopColor}
+                        stop-opacity="0"
+                    />
                 </M.linearGradient>
             </defs>
 
@@ -245,10 +253,18 @@
                             onAnimationComplete?.();
                         }}
                     >
-                        <stop offset="0%" stop-color={gradientStartColor} stop-opacity="0" />
+                        <stop
+                            offset="0%"
+                            stop-color={gradientStartColor}
+                            stop-opacity="0"
+                        />
                         <stop offset="0%" stop-color={gradientStartColor} />
                         <stop offset="32.5%" stop-color={gradientStopColor} />
-                        <stop offset="100%" stop-color={gradientStopColor} stop-opacity="0" />
+                        <stop
+                            offset="100%"
+                            stop-color={gradientStopColor}
+                            stop-opacity="0"
+                        />
                     </M.linearGradient>
                 </defs>
             {/key}

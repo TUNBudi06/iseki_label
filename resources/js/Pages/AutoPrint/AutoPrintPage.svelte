@@ -27,6 +27,8 @@
     import { Input } from '$shadcn/components/ui/input';
     import AnimatedBeam from '$lib/Beam/AnimatedBeam.svelte';
     import {isEmptyObject} from "tailwind-variants/utils";
+    import {routeUrl} from "@tunbudi06/inertia-route-helper";
+    import {listAuto} from "$routes/api/auto-print";
 
     let printerState = $state<PrintModuleState | null>(null);
     let mounted = new IsMounted();
@@ -89,7 +91,6 @@
         } else {
             startPrinting = true;
         }
-
     }
 
     const interval = useInterval(() => intervalSetting, {
@@ -97,13 +98,47 @@
         callback: ()=> webTask(),
     });
 
-    let durationAnimation = $derived.by(()=>{
-        const interval = intervalSetting/1000;
-        if(interval <= 0) {
-            return 1;
-        }
-        return Math.min(interval * 0.8, 5);
-    })
+    // let durationAnimation = $derived.by(()=>{
+    //     const interval = intervalSetting/1000;
+    //     if(interval <= 0) {
+    //         return 1;
+    //     }
+    //     return Math.min(interval * 0.3, 5);
+    // })
+    // $inspect(durationAnimation, 'durationAnimation')
+
+    const durationAnimation = 2; //let's keep it simple for now, can be derived from intervalSetting if needed
+
+
+    let startedFetching = $state(false);
+    async function fetchingDataFunction() {
+        startedFetching = true;
+        startScanDb = false;
+        const fetchdata = await fetch(routeUrl(listAuto()),{
+            method: "get",
+        }).then(res => {
+            if(res.ok) {
+                // @ts-ignore
+                return res.json();
+            }
+            throw new Error("Failed to fetch data");
+        }).catch(err => {
+            console.error(err);
+            return [];
+        }).finally(()=>{
+            startedFetching = false;
+        })
+        console.log("Fetched data:", fetchdata);
+        databaseData =  fetchdata;
+        arrayCount = databaseData ? databaseData.length : 0;
+    }
+
+    let arrayFetched = $state(false);
+    let arrayCount = $state(0);
+    async function resultTask() {
+        startedFetching = false;
+        arrayFetched = true;
+    }
 </script>
 
 <Navbar>
@@ -124,56 +159,63 @@
                     the print module is initialized successfully.
                 </Card.Description>
             </Card.Header>
+
             <Card.Content>
-                <div class="w-full h-max p-4 rounded-xl bg-pink-50 flex">
-                    <div class="grid grid-cols-2 w-[30%]">
-                        <p class="text-lg font-medium w-40">
-                            Client Initialized
-                        </p>
-                        <p class="text-lg font-medium">
+                <div class="w-full p-4 rounded-xl bg-pink-50 flex flex-col gap-6 md:flex-row md:gap-6">
+
+                    <!-- LEFT COLUMN -->
+                    <div class="grid grid-cols-2 gap-y-2 text-sm sm:text-base md:w-1/3">
+                        <p class="font-medium">Client Initialized</p>
+                        <p class="font-medium">
                             : {printerState?.initialized ?? 'No'}
                         </p>
-                        <p class="text-lg font-medium w-40">Client Os</p>
-                        <p class="text-lg font-medium">
+
+                        <p class="font-medium">Client OS</p>
+                        <p class="font-medium">
                             : {printerState?.os ?? 'Null'}
                         </p>
-                        <p class="text-lg font-medium w-40">Client Host</p>
-                        <p class="text-lg font-medium">
+
+                        <p class="font-medium">Client Host</p>
+                        <p class="font-medium">
                             : {printerState?.hostname ?? 'Null'}
                         </p>
-                        <p class="text-lg font-medium w-40">Client Id</p>
-                        <p class="text-lg font-medium">
+
+                        <p class="font-medium">Client Id</p>
+                        <p class="font-medium">
                             : {printerState?.client_id ?? 'Null'}
                         </p>
                     </div>
-                    <div class="w-[40%] grid grid-cols-2 gap-x-2">
-                        <p class="text-lg font-medium w-40">Printer Name</p>
-                        <p class="text-lg font-medium">
+
+                    <!-- MIDDLE COLUMN -->
+                    <div class="grid grid-cols-2 gap-y-2 gap-x-3 text-sm sm:text-base md:w-1/3">
+                        <p class="font-medium">Printer Name</p>
+                        <p class="font-medium">
                             : {printerUsedState?.name ?? 'Null'}
                         </p>
-                        <p class="text-lg font-medium w-40">Printer Status</p>
-                        <p class="text-lg font-medium">
+
+                        <p class="font-medium">Printer Status</p>
+                        <p class="font-medium">
                             : {printerUsedState?.status ?? 'Null'}
                         </p>
-                        <div class="row-span-2 col-span-2 w-full flex">
-                            <p class="text-lg font-medium w-40">
-                                Printer Used:
-                            </p>
+
+                        <div class="col-span-2 flex flex-col sm:flex-row gap-2 mt-2">
+                            <p class="font-medium sm:w-40">Printer Used:</p>
+
                             <NativeSelect.Root
                                 bind:value={usedPrinter}
-                                class="w-90 bg-pink-50 text-black"
+                                class="w-full sm:w-auto bg-pink-50 text-black"
                             >
                                 {#each printerState?.printer_list ?? [] as p}
-                                    <NativeSelect.Option value={p.name}
-                                        >{p.name}</NativeSelect.Option
-                                    >
+                                    <NativeSelect.Option value={p.name}>
+                                        {p.name}
+                                    </NativeSelect.Option>
                                 {/each}
                             </NativeSelect.Root>
                         </div>
                     </div>
-                    <div
-                        class="w-[30%] content-center text-center justify-center items-center flex"
-                    >
+
+                    <!-- RIGHT COLUMN -->
+                    <div class="flex justify-center items-center text-center md:w-1/3">
                         {#if printerState?.initialized && printerUsedState?.status === 'Ready'}
                             <div class="flex flex-col items-center gap-2">
                                 <PCIcon class="text-green-500" size={48} />
@@ -185,10 +227,12 @@
                             <button
                                 onclick={fetchPrinterState}
                                 class="px-4 py-2 rounded bg-pink-500 text-white hover:bg-pink-600 transition"
-                                >Refresh State</button
                             >
+                                Refresh State
+                            </button>
                         {/if}
                     </div>
+
                 </div>
             </Card.Content>
         </Card.Root>
@@ -228,174 +272,181 @@
                 </Field.Field>
             </Card.Header>
             <Card.Content class=" m-2">
-                <div
-                    class="w-full bg-pink-500/40 h-128 rounded-xl relative"
-                    bind:this={containerRef}
-                >
+                <div class="overflow-x-auto w-full">
                     <div
-                        bind:this={webClient}
-                        class="absolute w-28 flex h-16 top-20 left-20 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                        class="w-380 bg-pink-500/40 h-128 rounded-xl relative"
+                        bind:this={containerRef}
                     >
-                        <UserIcon />
-                        <span class="text-xs text-gray-100 text-shadow-2xs"
+                        <div
+                            bind:this={webClient}
+                            class="absolute w-28 flex h-16 top-20 left-20 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                        >
+                            <UserIcon />
+                            <span class="text-xs text-gray-100 text-shadow-2xs"
                             >Web Client</span
-                        >
-                    </div>
+                            >
+                        </div>
 
-                    <div
-                        bind:this={scheduler}
-                        class="absolute w-28 flex h-16 top-20 left-90 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                    >
-                        <CalendarClockIcon />
-                        <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                        <div
+                            bind:this={scheduler}
+                            class="absolute w-28 flex h-16 top-20 left-90 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                        >
+                            <CalendarClockIcon />
+                            <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
                             >Scheduler</span
-                        >
-                    </div>
+                            >
+                        </div>
 
-                    <div
-                        bind:this={fetchingRef}
-                        class="absolute w-28 flex h-16 top-20 left-160 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                    >
-                        <SearchIcon />
-                        <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                        <div
+                            bind:this={fetchingRef}
+                            class="absolute w-28 flex h-16 top-20 left-160 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                        >
+                            <SearchIcon />
+                            <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
                             >Fetching</span
-                        >
-                    </div>
+                            >
+                        </div>
 
-                    <div
-                        bind:this={databaseRef}
-                        class="absolute w-28 flex h-16 top-20 left-240 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                    >
-                        <DatabaseIcon />
-                        <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                        <div
+                            bind:this={databaseRef}
+                            class="absolute w-28 flex h-16 top-20 left-240 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                        >
+                            <DatabaseIcon />
+                            <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
                             >Database</span
-                        >
-                    </div>
+                            >
+                        </div>
 
-                    <div
-                        bind:this={arrayRef}
-                        class="absolute w-28 flex h-16 top-20 left-320 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                    >
-                        <ChevronLeft /><ChevronLeft class="rotate-180" />
-                        <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                        <div
+                            bind:this={arrayRef}
+                            class="absolute w-28 flex h-16 top-20 left-320 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                        >
+                            <ChevronLeft />{arrayCount}<ChevronLeft class="rotate-180" />
+                            <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
                             >Array</span
-                        >
-                    </div>
+                            >
+                        </div>
 
-                    <div
-                        bind:this={dataListRef}
-                        class="absolute w-28 flex h-16 top-60 left-90 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                    >
-                        <BetweenHorizonalStart />
-                        <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                        <div
+                            bind:this={dataListRef}
+                            class="absolute w-28 flex h-16 top-60 left-90 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                        >
+                            <BetweenHorizonalStart />
+                            <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
                             >Data List</span
-                        >
-                    </div>
+                            >
+                        </div>
 
-                    <div
-                        bind:this={generatingRef}
-                        class="absolute w-28 flex h-16 top-60 left-160 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                    >
-                        <Shredder />
-                        <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                        <div
+                            bind:this={generatingRef}
+                            class="absolute w-28 flex h-16 top-60 left-160 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                        >
+                            <Shredder />
+                            <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
                             >Generating Rendering</span
-                        >
-                    </div>
+                            >
+                        </div>
 
-                    <div
-                        bind:this={uploadingRef}
-                        class="absolute w-28 flex h-16 top-60 left-240 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                    >
-                        <HardDriveUpload />
-                        <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                        <div
+                            bind:this={uploadingRef}
+                            class="absolute w-28 flex h-16 top-60 left-240 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                        >
+                            <HardDriveUpload />
+                            <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
                             >Uplouding</span
-                        >
-                    </div>
+                            >
+                        </div>
 
-                    <div
-                        bind:this={resultRef}
-                        class="absolute w-28 flex h-16 top-60 left-320 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                    >
-                        <ChevronLeft /><ChevronLeft class="rotate-180" />
-                        <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                        <div
+                            bind:this={resultRef}
+                            class="absolute w-28 flex h-16 top-60 left-320 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                        >
+                            <ChevronLeft /><ChevronLeft class="rotate-180" />
+                            <span class="text-xs text-gray-100 text-shadow-2xs ps-2"
                             >Result</span
-                        >
-                    </div>
+                            >
+                        </div>
 
-                    <AnimatedBeam
-                        duration={durationAnimation}
-                        trigger={startTask}
-                        pathColor="black"
-                        startXOffset={60}
-                        endXOffset={-50}
-                        bind:containerRef
-                        bind:fromRef={webClient}
-                        gradientStartColor="#2b7cff"
-                        gradientStopColor="#00e5ff"
-                        pathWidth={4}
-                        bind:toRef={scheduler}
-                        onAnimationComplete={() => schedulerTask()}
-                    />
-                    <AnimatedBeam
-                        duration={durationAnimation}
-                        trigger={startScanDb}
-                        pathColor="black"
-                        startXOffset={60}
-                        endXOffset={-50}
-                        bind:containerRef
-                        bind:fromRef={scheduler}
-                        bind:toRef={fetchingRef}
-                        gradientStartColor="#2b7cff"
-                        gradientStopColor="#00e5ff"
-                        pathWidth={4}
-                        onAnimationComplete={() => {
-                            startScanDb = false;
-                            taskIsRunning = false;
+                        <AnimatedBeam
+                            duration={durationAnimation}
+                            trigger={startTask}
+                            pathColor="black"
+                            startXOffset={60}
+                            endXOffset={-50}
+                            bind:containerRef
+                            bind:fromRef={webClient}
+                            gradientStartColor="#2b7cff"
+                            gradientStopColor="#00e5ff"
+                            pathWidth={4}
+                            bind:toRef={scheduler}
+                            onAnimationComplete={() => schedulerTask()}
+                        />
+                        <AnimatedBeam
+                            duration={durationAnimation}
+                            trigger={startScanDb}
+                            pathColor="black"
+                            startXOffset={60}
+                            endXOffset={-50}
+                            bind:containerRef
+                            bind:fromRef={scheduler}
+                            bind:toRef={fetchingRef}
+                            gradientStartColor="#2b7cff"
+                            gradientStopColor="#00e5ff"
+                            pathWidth={4}
+                            onAnimationComplete={() => fetchingDataFunction()}
+                        />
+                        <AnimatedBeam
+                            duration={durationAnimation}
+                            trigger={startedFetching}
+                            pathColor="black"
+                            startXOffset={60}
+                            endXOffset={-50}
+                            bind:containerRef
+                            bind:fromRef={fetchingRef}
+                            bind:toRef={databaseRef}
+                            gradientStartColor="#2b7cff"
+                            gradientStopColor="#00e5ff"
+                            pathWidth={4}
+                            onAnimationComplete={()=> resultTask()}
+                        />
+                        <AnimatedBeam
+                            duration={durationAnimation}
+                            trigger={arrayFetched}
+                            pathColor="black"
+                            startXOffset={60}
+                            endXOffset={-50}
+                            bind:containerRef
+                            bind:fromRef={databaseRef}
+                            bind:toRef={arrayRef}
+                            gradientStartColor="#2b7cff"
+                            gradientStopColor="#00e5ff"
+                            pathWidth={4}
+                            onAnimationComplete={()=> {
+                            arrayFetched = false
+                            taskIsRunning =false
                         }}
-                    />
-                    <AnimatedBeam
-                        duration={durationAnimation}
-                        trigger={startScanDb}
-                        pathColor="black"
-                        startXOffset={60}
-                        endXOffset={-50}
-                        bind:containerRef
-                        bind:fromRef={fetchingRef}
-                        bind:toRef={databaseRef}
-                        gradientStartColor="#2b7cff"
-                        gradientStopColor="#00e5ff"
-                        pathWidth={4}
-                    />
-                    <AnimatedBeam
-                        duration={durationAnimation}
-                        trigger={startScanDb}
-                        pathColor="black"
-                        startXOffset={60}
-                        endXOffset={-50}
-                        bind:containerRef
-                        bind:fromRef={databaseRef}
-                        bind:toRef={arrayRef}
-                        gradientStartColor="#2b7cff"
-                        gradientStopColor="#00e5ff"
-                        pathWidth={4}
-                    />
-                    <AnimatedBeam
-                        duration={durationAnimation}
-                        trigger={startPrinting}
-                        pathColor="black"
-                        startYOffset={35}
-                        endYOffset={-35}
-                        bind:containerRef
-                        bind:fromRef={scheduler}
-                        bind:toRef={dataListRef}
-                        gradientStartColor="#2b7cff"
-                        gradientStopColor="#00e5ff"
-                        pathWidth={4}
-                        onAnimationComplete={() => {
+                        />
+
+
+                        <!--                    PRINTING BEAM-->
+                        <AnimatedBeam
+                            duration={durationAnimation}
+                            trigger={startPrinting}
+                            pathColor="black"
+                            startYOffset={35}
+                            endYOffset={-35}
+                            bind:containerRef
+                            bind:fromRef={scheduler}
+                            bind:toRef={dataListRef}
+                            gradientStartColor="#2b7cff"
+                            gradientStopColor="#00e5ff"
+                            pathWidth={6}
+                            onAnimationComplete={() => {
                             startPrinting = false;
                             taskIsRunning = false;
                         }}
-                    />
+                        />
+                    </div>
                 </div>
             </Card.Content>
         </Card.Root>

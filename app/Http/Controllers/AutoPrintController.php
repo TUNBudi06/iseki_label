@@ -25,4 +25,13 @@ class AutoPrintController extends Controller
 
         return response()->json($autoPrintList);
     }
+
+    public function markAsPrinted(Request $request)
+    {
+        $ids = $request->input('ids' );
+        $id_list  =  json_decode($ids, true);
+        debugbar()->info($id_list);
+        QueueLabelPrint::whereIn('id', $id_list)->update(['printed' => true]);
+        return $id_list;
+    }
 }

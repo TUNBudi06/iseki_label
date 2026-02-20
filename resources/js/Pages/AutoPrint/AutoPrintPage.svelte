@@ -34,15 +34,18 @@
         BetweenHorizonalStart,
         Shredder,
         HardDriveUpload,
+        Stamp
     } from '@lucide/svelte';
     import { Button } from '$shadcn/components/ui/button';
     import { useInterval, IsMounted } from 'runed';
     import { Input } from '$shadcn/components/ui/input';
     import AnimatedBeam from '$lib/Beam/AnimatedBeam.svelte';
     import { routeUrl } from '@tunbudi06/inertia-route-helper';
-    import { listAuto } from '$routes/api/auto-print';
+    import {listAuto, markAutoPrint} from '$routes/api/auto-print';
     import RenderEngine from '$lib/print/RenderEngine.svelte';
     import AutoRender from '$/Pages/AutoPrint/AutoRender.svelte';
+    import jsPDF from "jspdf";
+    import html2canvas from "html2canvas-pro";
 
     // Page: Auto Print Service
     // Responsibilities:
@@ -91,7 +94,9 @@
     let dataListRef: HTMLElement | null = $state(null);
     let generatingRef: HTMLElement | null = $state(null);
     let uploadingRef: HTMLElement | null = $state(null);
-    let resultRef: HTMLElement | null = $state(null);
+    let resultUploudingRef: HTMLElement | null = $state(null);
+    let resultPrintingRef: HTMLElement | null = $state(null);
+    let printingRef: HTMLElement | null = $state(null);
 
     let taskIsRunning = $state(false);
     let databaseData = $state<any[]>([]);
@@ -152,34 +157,190 @@
             });
         console.log('Fetched data:', fetchdata);
         databaseData = fetchdata;
-        arrayCount = databaseData ? databaseData.length : 0;
     }
 
     let arrayFetched = $state(false);
     let arrayCount = $state(0);
     async function resultTask() {
+        arrayCount = databaseData ? databaseData.length : 0;
         startedFetching = false;
         arrayFetched = true;
     }
 
     let dataBind = $state<any[]>([]);
     async function DataBaseListParse() {
-        startPrinting = false;
-        dataBind = databaseData ? databaseData : [];
+        arrayFetched=false
         taskIsRunning = false;
     }
 
+    let labelRenderStarted = $state(false);
+    function LabelLister() {
+        startPrinting = false;
+        dataBind = databaseData ? databaseData : [];
+        labelRenderStarted = true;
+    }
+
     let labelContainer = $state<HTMLElement>();
-    function LabelRenderEngine() {
+    let pdfBlob = $state<Blob>()
+    async function renderAndGenerateLabel(){
+        labelRenderStarted = false;
         if (!labelContainer) {
             taskIsRunning = false;
             return;
         }
 
-        let query = labelContainer.querySelectorAll('.A4-print-page')
+        let query = labelContainer.querySelectorAll('.A4-print-page');
         console.log('Found pages:', query.length);
-        taskIsRunning = false;
+
+        try {
+            // Cari semua A4Sheet elements
+            const sheets = labelContainer.querySelectorAll('.A4-print-page');
+
+            if (sheets.length === 0) {
+                return;
+            }
+
+            console.log(`Found ${sheets.length} pages to print`);
+
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgWidth = 210; // A4 width in mm
+            const imgHeight = 297; // A4 height in mm
+
+            // Process setiap sheet satu per satu
+            for (let i = 0; i < sheets.length; i++) {
+                const sheet = sheets[i] as HTMLElement;
+
+                console.log(`Processing page ${i + 1}/${sheets.length}...`);
+
+                // Convert sheet to canvas
+                const canvas = await html2canvas(sheet, {
+                    scale: 3, // High quality
+                    useCORS: true,
+                    logging: false,
+                    width: sheet.offsetWidth,
+                    height: sheet.offsetHeight,
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+
+                // Add new page for subsequent pages
+                if (i > 0) {
+                    pdf.addPage();
+                }
+
+                // Calculate dimensions to fit A4
+                const canvasWidth = imgWidth;
+                const canvasHeight = (canvas.height * imgWidth) / canvas.width;
+
+                // Add image to current PDF page
+                pdf.addImage(
+                    imgData,
+                    'PNG',
+                    0,
+                    0,
+                    canvasWidth,
+                    Math.min(canvasHeight, imgHeight),
+                );
+
+                console.log(`Page ${i + 1} added to PDF`);
+            }
+
+            // Generate Blob instead of saving
+            pdfBlob = pdf.output('blob');
+
+            // Optional: Buat URL untuk preview/download manual
+            // const pdfUrl = URL.createObjectURL(pdfBlob);
+
+            // Optional: Simpan ke variable atau kirim ke server
+            // const formData = new FormData();
+            // formData.append('pdf', pdfBlob, `iseki-labels-${sheets.length}pages.pdf`);
+
+            // console.log('PDF Blob generated:', pdfBlob);
+            // console.log('PDF URL:', pdfUrl);
+
+            // Contoh: Auto-download dengan nama custom
+            // const link = document.createElement('a');
+            // link.href = pdfUrl;
+            // link.download = `iseki-labels-${sheets.length}pages-${timestamp}.pdf`;
+            // link.click();
+
+            // pdf.save('test.pdf')
+
+            // Return blob jika perlu
+            // return pdfBlob;
+
+        } catch (error) {
+            console.error('Error generating multi-page PDF:', error);
+            alert('Error generating PDF. Check console for details.');
+            throw error;
+        } finally {
+            startUploading = true;
+        }
     }
+
+    let startUploading = $state(false);
+    let UploadingDone = $state(false);
+    let uploadingResult = $state(false);
+    async function labelUplouding(){
+        startUploading = false
+
+        let ids = databaseData ? databaseData.map((item)=>{
+            return item.id
+        }) : [];
+        const formdata = new FormData();
+        formdata.append('ids', JSON.stringify(ids));
+
+        await fetch(routeUrl(markAutoPrint()), {
+            method: 'post',
+            body: formdata
+        }).then(async (res)=>{
+            if(res.ok) {
+                console.log('Upload successful',await res.json());
+                UploadingDone = true;
+            } else {
+                console.error('Upload failed');
+                UploadingDone = false;
+            }
+        }).catch((err)=>{
+            console.error('Error during upload:', err);
+            UploadingDone = false;
+        })
+        uploadingResult = true
+    }
+
+    let statusUploading = $state("");
+    async function labelUploudingResult(){
+        uploadingResult = false
+        statusUploading = UploadingDone ? "OK" : "NG";
+        setTimeout(() => {
+            statusUploading = "";
+            taskIsRunning = false;
+        }, 2000)
+    }
+
+    // function label
+    let printingDone = $state(false);
+    let printingResult = $state(false);
+    function labelPrinting(){
+        if(pdfBlob) {
+            // lakukan proses printing dengan pdfBlob
+            console.log('Ready to print PDF Blob:', pdfBlob);
+            UploadingDone = true;
+            dataBind = databaseData = [];
+        } else {
+            console.error('No PDF Blob available for printing');
+        }
+    }
+
+    let statusPrinting = $state("");
+    async function labelPrintingResult(){
+        statusPrinting = printingDone ? "OK" : "NG";
+        setTimeout(() => {
+            statusPrinting = "";
+            // taskIsRunning = false; // commented because if uploading fails this will running again and again
+        }, 2000)
+    }
+
 </script>
 
 <Navbar>
@@ -294,7 +455,7 @@
                         variant="outline"
                         onclick={() => interval.pause()}
                         class="border-orange-300 w-40"
-                        ><SquareIcon class="text-green-800" /> Stop</Button
+                        ><SquareIcon class="bg-red-800/50" /> Stop</Button
                     >
                 {:else}
                     <Button
@@ -405,8 +566,30 @@
                         </div>
 
                         <div
-                            bind:this={uploadingRef}
+                            bind:this={printingRef}
                             class="absolute w-28 flex h-16 top-60 left-240 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                        >
+                            <Stamp />
+                            <span
+                                class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                                >Printing</span
+                            >
+                        </div>
+
+                        <div
+                            bind:this={resultPrintingRef}
+                            class="absolute w-28 flex h-16 top-60 left-320 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                        >
+                            <ChevronLeft /><ChevronLeft class="rotate-180" />
+                            <span
+                                class="text-xs text-gray-100 text-shadow-2xs ps-2"
+                                >Result</span
+                            >
+                        </div>
+
+                        <div
+                            bind:this={uploadingRef}
+                            class="absolute w-28 flex h-16 top-95 left-240 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
                         >
                             <HardDriveUpload />
                             <span
@@ -416,10 +599,10 @@
                         </div>
 
                         <div
-                            bind:this={resultRef}
-                            class="absolute w-28 flex h-16 top-60 left-320 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
+                            bind:this={resultUploudingRef}
+                            class="absolute w-28 flex h-16 top-95 left-320 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
                         >
-                            <ChevronLeft /><ChevronLeft class="rotate-180" />
+                            <ChevronLeft />{statusUploading}<ChevronLeft class="rotate-180" />
                             <span
                                 class="text-xs text-gray-100 text-shadow-2xs ps-2"
                                 >Result</span
@@ -480,7 +663,7 @@
                             gradientStartColor="#2b7cff"
                             gradientStopColor="#00e5ff"
                             pathWidth={4}
-                            onAnimationComplete={() => DataBaseListParse()}
+                            onAnimationComplete={()=> DataBaseListParse()}
                         />
 
                         <!--                    PRINTING BEAM-->
@@ -496,7 +679,68 @@
                             gradientStartColor="#2b7cff"
                             gradientStopColor="#00e5ff"
                             pathWidth={6}
-                            onAnimationComplete={()=> LabelRenderEngine()}
+                            onAnimationComplete={()=> LabelLister()}
+                        />
+
+                        <AnimatedBeam
+                            duration={durationAnimation}
+                            trigger={labelRenderStarted}
+                            pathColor="black"
+                            startXOffset={60}
+                            endXOffset={-50}
+                            bind:containerRef
+                            bind:fromRef={dataListRef}
+                            bind:toRef={generatingRef}
+                            gradientStartColor="#2b7cff"
+                            gradientStopColor="#00e5ff"
+                            pathWidth={4}
+                            onAnimationComplete={()=> renderAndGenerateLabel()}
+                        />
+
+                        <AnimatedBeam
+                            duration={durationAnimation}
+                            trigger={startUploading}
+                            pathColor="black"
+                            startXOffset={60}
+                            endXOffset={-50}
+                            curvature={-140}
+                            bind:containerRef
+                            bind:fromRef={generatingRef}
+                            bind:toRef={uploadingRef}
+                            gradientStartColor="#2b7cff"
+                            gradientStopColor="#00e5ff"
+                            pathWidth={4}
+                            onAnimationComplete={()=> labelUplouding()}
+                        />
+
+                        <AnimatedBeam
+                            duration={durationAnimation}
+                            trigger={startUploading}
+                            pathColor="black"
+                            startXOffset={60}
+                            endXOffset={-50}
+                            bind:containerRef
+                            bind:fromRef={generatingRef}
+                            bind:toRef={printingRef}
+                            gradientStartColor="#2b7cff"
+                            gradientStopColor="#00e5ff"
+                            pathWidth={4}
+                            onAnimationComplete={()=> labelPrinting()}
+                        />
+
+                        <AnimatedBeam
+                            duration={durationAnimation}
+                            trigger={uploadingResult}
+                            pathColor="black"
+                            startXOffset={60}
+                            endXOffset={-50}
+                            bind:containerRef
+                            bind:fromRef={uploadingRef}
+                            bind:toRef={resultUploudingRef}
+                            gradientStartColor="#2b7cff"
+                            gradientStopColor="#00e5ff"
+                            pathWidth={4}
+                            onAnimationComplete={()=> labelUploudingResult()}
                         />
                     </div>
                 </div>

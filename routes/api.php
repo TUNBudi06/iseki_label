@@ -19,4 +19,5 @@ Route::prefix('queue-label-prints')->group(function () {
 
 Route::prefix('auto-print')->group(function () {
     Route::get('/list', [\App\Http\Controllers\AutoPrintController::class, 'getAutoPrintList'])->name('api.auto-print.list-auto');
+    Route::post('/mark-as-printed', [\App\Http\Controllers\AutoPrintController::class, 'markAsPrinted'])->name('api.auto-print.mark-auto-print');
 });

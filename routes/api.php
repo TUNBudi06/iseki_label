@@ -21,3 +21,8 @@ Route::prefix('auto-print')->group(function () {
     Route::get('/list', [\App\Http\Controllers\AutoPrintController::class, 'getAutoPrintList'])->name('api.auto-print.list-auto');
     Route::post('/mark-as-printed', [\App\Http\Controllers\AutoPrintController::class, 'markAsPrinted'])->name('api.auto-print.mark-auto-print');
 });
+
+Route::prefix('rack')->group(function () {
+    Route::get('/table-fetching', [\App\Http\Controllers\RackController::class, 'dataFetching'])->name('api.rack.data-fetching');
+    Route::get('single/{id}', [\App\Http\Controllers\RackController::class, 'getSingleRack'])->name('api.rack.get-single');
+});

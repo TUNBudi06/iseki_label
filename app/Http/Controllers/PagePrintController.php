@@ -9,16 +9,17 @@ use Inertia\Inertia;
 
 class PagePrintController extends Controller
 {
-    public function index(Request $request) {
+    public function index(Request $request)
+    {
         $ids = $request->query('labels', null);
         $idsPrint = [];
         if ($ids) {
-           $idsPrint = json_decode($ids,true);
+            $idsPrint = json_decode($ids, true);
         }
 
         $list = [];
         QueueLabelPrint::with('RackList')->get()->each(function ($item) use ($idsPrint, &$list) {
-            if(!in_array($item->id, $idsPrint)) {
+            if (! in_array($item->id, $idsPrint)) {
                 return null;
             }
             $data = [
@@ -34,12 +35,13 @@ class PagePrintController extends Controller
             ];
 
             if ($item->quantity > 1) {
-                for($i=0; $i < $item->quantity; $i++) {
+                for ($i = 0; $i < $item->quantity; $i++) {
                     $list[] = $data;
                 }
             } else {
                 $list[] = $data;
             }
+
             return null;
         });
 
@@ -49,11 +51,12 @@ class PagePrintController extends Controller
         ]);
     }
 
-    public function alreadyPrinted(Request $request) {
+    public function alreadyPrinted(Request $request)
+    {
         $ids = $request->query('labels', null);
         $idsPrint = [];
         if ($ids) {
-           $idsPrint = json_decode($ids,true);
+            $idsPrint = json_decode($ids, true);
         }
 
         return DB::transaction(function () use ($idsPrint) {
@@ -66,6 +69,7 @@ class PagePrintController extends Controller
                 $item->printed = true;
                 $item->save();
             });
+
             return response()->json([
                 'success' => true,
                 'message' => 'Labels marked as printed',

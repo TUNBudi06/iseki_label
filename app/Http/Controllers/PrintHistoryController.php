@@ -56,7 +56,7 @@ class PrintHistoryController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to reprint label: ' . $e->getMessage(),
+                'message' => 'Failed to reprint label: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -91,14 +91,14 @@ class PrintHistoryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => count($ids) . ' labels ready to reprint',
+                'message' => count($ids).' labels ready to reprint',
                 'printUrl' => $printUrl,
                 'count' => count($ids),
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to reprint labels: ' . $e->getMessage(),
+                'message' => 'Failed to reprint labels: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -112,7 +112,7 @@ class PrintHistoryController extends Controller
             $label = QueueLabelPrint::findOrFail($id);
 
             // Only allow deletion of printed labels
-            if (!$label->printed) {
+            if (! $label->printed) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Can only delete printed labels from history',
@@ -128,7 +128,7 @@ class PrintHistoryController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete label: ' . $e->getMessage(),
+                'message' => 'Failed to delete label: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -153,15 +153,14 @@ class PrintHistoryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => $deleted . ' labels deleted from history',
+                'message' => $deleted.' labels deleted from history',
                 'deleted_count' => $deleted,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete labels: ' . $e->getMessage(),
+                'message' => 'Failed to delete labels: '.$e->getMessage(),
             ], 500);
         }
     }
 }
-

@@ -11,7 +11,7 @@ class AuthController extends Controller
     //
     public function authUser()
     {
-        return Inertia::render("User/LoginPage");
+        return Inertia::render('User/LoginPage');
     }
 
     public function authUserPost(Request $request)
@@ -21,21 +21,22 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-            $user = \App\Models\User::where('username', $data['username'])->first();
-            if (!$user) {
-                    return back()->withErrors([
-                        'username' => 'User tidak ditemukan atau password salah.',
-                    ])->onlyInput('username');
-            }
+        $user = \App\Models\User::where('username', $data['username'])->first();
+        if (! $user) {
+            return back()->withErrors([
+                'username' => 'User tidak ditemukan atau password salah.',
+            ])->onlyInput('username');
+        }
 
-            if ($user->password === $data['password']) {
-                Auth::login($user);
-                return redirect()->route('home');
-            } else {
-                return back()->withErrors([
-                    'username' => 'User tidak ditemukan atau password salah.',
-                ])->onlyInput('username');
-            }
+        if ($user->password === $data['password']) {
+            Auth::login($user);
+
+            return redirect()->route('home');
+        } else {
+            return back()->withErrors([
+                'username' => 'User tidak ditemukan atau password salah.',
+            ])->onlyInput('username');
+        }
     }
 
     public function logoutUser(Request $request)
@@ -43,6 +44,7 @@ class AuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
         return redirect()->route('home');
     }
 }

@@ -5,7 +5,8 @@
     import DefaultLayout from '$/Layouts/DefaultLayout.svelte';
     import {login, logout, manage} from "$routes/user/index.ts";
     import { page } from '@inertiajs/svelte';
-    import { Tag, Home, LogIn, User, Info, LogOut } from '@lucide/svelte';
+    import {Tag, Home, LogIn, User, Info, LogOut, SquareLibrary} from '@lucide/svelte';
+    import {rackIndex} from "$routes/rack/index.ts";
 
     let { children = null } = $props();
 </script>
@@ -49,7 +50,7 @@
                         <div class="flex gap-4">
                             {@render NavMenu(routeUrl(manage()), 'User', User)}
                             {@render NavMenu(routeUrl(home()), 'Home', Home)}
-                            {@render NavMenu(routeUrl(about()), 'About', Info)}
+                            {@render NavMenu(routeUrl(rackIndex()), 'Rack List',SquareLibrary )}
                         </div>
                         <div class="flex gap-4">
                             {@render NavMenu(routeUrl(logout()), 'Logout', LogOut)}

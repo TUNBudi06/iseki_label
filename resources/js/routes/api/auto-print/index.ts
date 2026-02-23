@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\AutoPrintController::listAuto
- * @see app/Http/Controllers/AutoPrintController.php:17
+ * @see app/Http/Controllers/AutoPrintController.php:16
  * @route '/api/auto-print/list'
  */
 export const listAuto = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ listAuto.definition = {
 
 /**
 * @see \App\Http\Controllers\AutoPrintController::listAuto
- * @see app/Http/Controllers/AutoPrintController.php:17
+ * @see app/Http/Controllers/AutoPrintController.php:16
  * @route '/api/auto-print/list'
  */
 listAuto.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ listAuto.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\AutoPrintController::listAuto
- * @see app/Http/Controllers/AutoPrintController.php:17
+ * @see app/Http/Controllers/AutoPrintController.php:16
  * @route '/api/auto-print/list'
  */
 listAuto.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -34,7 +34,7 @@ listAuto.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\AutoPrintController::listAuto
- * @see app/Http/Controllers/AutoPrintController.php:17
+ * @see app/Http/Controllers/AutoPrintController.php:16
  * @route '/api/auto-print/list'
  */
 listAuto.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({

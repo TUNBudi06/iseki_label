@@ -19,10 +19,11 @@ class HomeController extends Controller
     {
         $query = QueueLabelPrint::with('RackList')->get();
 
-        $labelNotPrinted =  $query->map(function ($item) {
-            if(!$item->printed){
+        $labelNotPrinted = $query->map(function ($item) {
+            if (! $item->printed) {
                 return $item;
             }
+
             return null;
         })->filter();
 
@@ -35,12 +36,12 @@ class HomeController extends Controller
         })->filter();
 
         $totallabelprinted = $query->map(function ($item) {
-            if($item->printed){
+            if ($item->printed) {
                 return $item;
             }
         })->filter();
 
-//        debugbar()->info($labelNotPrinted->toArray());
+        //        debugbar()->info($labelNotPrinted->toArray());
 
         return Inertia::render('Home', [
             'message' => 'Welcome to the Home Page!',
@@ -67,7 +68,7 @@ class HomeController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus label: ' . $e->getMessage(),
+                'message' => 'Gagal menghapus label: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -78,17 +79,16 @@ class HomeController extends Controller
             'id' => 'required|integer',
         ])['id'];
 
-
         try {
-            return DB::transaction(function () use ($request, $index) {
+            return DB::transaction(function () use ($index) {
                 $label = QueueLabelPrint::findOrFail($index);
                 $label->printed = true;
                 $label->save();
-                return \response(null,204);
+
+                return \response(null, 204);
             });
         } catch (Exception $e) {
-            return \response(null,500);
+            return \response(null, 500);
         }
     }
 }
-

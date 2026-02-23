@@ -21,13 +21,12 @@ class QueueLabelPrint extends Model
         'urgent',
     ];
 
-
-    function getUrgentStatusAttribute()
+    public function getUrgentStatusAttribute()
     {
         return $this->urgent ? 'Yes' : 'No';
     }
 
-    function RackList()
+    public function RackList()
     {
         return $this->belongsTo(RackPartList::class, 'rack_code', 'rack_no');
     }

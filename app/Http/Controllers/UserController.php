@@ -22,16 +22,16 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'     => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'username' => 'required|string|max:255|unique:users,username',
-            'role'     => 'required|in:admin,user',
+            'role' => 'required|in:admin,user',
             'password' => 'required|string|min:4',
         ]);
 
         User::create([
-            'name'     => $request->name,
+            'name' => $request->name,
             'username' => $request->username,
-            'role'     => $request->role,
+            'role' => $request->role,
             'password' => $request->password,
         ]);
 
@@ -42,17 +42,17 @@ class UserController extends Controller
     {
         debugbar()->info('Update user request received', $request->all());
         $request->validate([
-            'id'       => 'required|exists:users,id',
-            'name'     => 'required|string|max:255',
+            'id' => 'required|exists:users,id',
+            'name' => 'required|string|max:255',
             'username' => 'required|string|max:255',
-            'role'     => 'required|in:admin,user',
+            'role' => 'required|in:admin,user',
             'password' => 'nullable|string|min:4',
         ]);
 
         $data = [
-            'name'     => $request->name,
+            'name' => $request->name,
             'username' => $request->username,
-            'role'     => $request->role,
+            'role' => $request->role,
         ];
 
         $user = User::find($request->id);
@@ -72,8 +72,9 @@ class UserController extends Controller
             'id' => 'required|exists:users,id',
         ]);
 
-        $user= User::find($request->id);
+        $user = User::find($request->id);
         $user->delete();
+
         return back()->with('success', 'User berhasil dihapus.');
     }
 }

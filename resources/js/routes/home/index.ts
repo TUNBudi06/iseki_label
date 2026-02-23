@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\HomeController::markAsPrinted
- * @see app/Http/Controllers/HomeController.php:75
+ * @see app/Http/Controllers/HomeController.php:76
  * @route '/home/mark-as-printed'
  */
 export const markAsPrinted = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ markAsPrinted.definition = {
 
 /**
 * @see \App\Http\Controllers\HomeController::markAsPrinted
- * @see app/Http/Controllers/HomeController.php:75
+ * @see app/Http/Controllers/HomeController.php:76
  * @route '/home/mark-as-printed'
  */
 markAsPrinted.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ markAsPrinted.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\HomeController::markAsPrinted
- * @see app/Http/Controllers/HomeController.php:75
+ * @see app/Http/Controllers/HomeController.php:76
  * @route '/home/mark-as-printed'
  */
 markAsPrinted.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({

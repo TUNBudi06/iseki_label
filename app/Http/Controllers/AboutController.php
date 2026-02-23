@@ -18,4 +18,3 @@ class AboutController extends Controller
         ]);
     }
 }
-

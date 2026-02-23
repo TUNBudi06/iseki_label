@@ -3,8 +3,9 @@
     import { Link } from '@inertiajs/svelte';
     import { home, about } from '$routes';
     import DefaultLayout from '$/Layouts/DefaultLayout.svelte';
+    import {login} from "$routes/user/index.ts";
 
-    let { children = null } = $props();
+    let { children = null,user } = $props();
 </script>
 
 {#snippet NavMenu(href, label)}
@@ -33,10 +34,21 @@
                         </h1>
                     </div>
 
+                    {#if !user}
                     <div class="flex gap-4">
                         {@render NavMenu(routeUrl(home()), 'Home')}
-                        {@render NavMenu(routeUrl(about()), 'About')}
+                            {@render NavMenu(routeUrl(login()), 'Login')}
+                        <!--{@render NavMenu(routeUrl(about()), 'About')}-->
                     </div>
+                    {:else}
+                        <div class="flex gap-4">
+                            {@render NavMenu(routeUrl(home()), 'Home')}
+                            <!--{@render NavMenu(routeUrl(about()), 'About')}-->
+                        </div>
+                        <div class="flex gap-4">
+                            <!--{@render NavMenu(routeUrl(login()), 'Logout')}-->
+                        </div>
+                    {/if}
                 </div>
             </div>
         </nav>

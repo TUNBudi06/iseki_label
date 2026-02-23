@@ -22,6 +22,10 @@ Route::prefix('home')->group(function () {
     });
 });
 
+Route::prefix('user')->group(function () {
+    Route::get('/login', [\App\Http\Controllers\AuthController::class, 'authUser'])->name('user.login');
+});
+
 Route::get('multi-page',function(){
     return Inertia::render('test/MultiPageExample');
 });

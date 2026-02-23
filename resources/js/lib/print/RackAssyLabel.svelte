@@ -32,7 +32,7 @@
         class="flex flex-col font-bold text-lg text-center w-[86mm] border-r border-black justify-center items-center box-border"
     >
         <h2
-            class="border-b-2 font-sans font-bold text-xl text-blue-700 tracking-widest w-full"
+            class="border-b-2 font-sans p-0 m-0 font-bold text-xl text-blue-700 tracking-widest w-full"
         >
             {rack}
         </h2>
@@ -40,12 +40,12 @@
         <h2
             class="border-b-2 text-xs font-normal text-orange-300 font-sans w-full"
         >
-            <AutoFitText minPx={12} maxPx={20} text={name} />
+            <AutoFitText minPx={16} maxPx={20} text={name} />
         </h2>
         <h2
             class="border-b-2 w-full font-normal tracking-tighter font-sans text-xs m-y-1"
         >
-            <AutoFitText minPx={12} maxPx={18} text={type} />
+            <AutoFitText minPx={15} maxPx={18} text={type} />
         </h2>
     </div>
     <div
@@ -53,12 +53,12 @@
     >
         <div class="border-b border-black w-full">Remark</div>
         <div class="border-b-2 w-full font-sans font-normal tracking-tight">
-            <AutoFitText minPx={15} text={timbangan ?? ''} />
+            <AutoFitText minPx={18} maxPx={25}  text={timbangan ?? ''} />
         </div>
         <div
             class="w-full text-sm font-normal font-sans row-span-2 tracking-tighter"
         >
-            <AutoFitText minPx={12} maxPx={16} fillSpace={true} balance={false} text={vendor} />
+            <AutoFitText minPx={14} maxPx={20} fillSpace={true} balance={false} text={vendor} />
         </div>
     </div>
     <div

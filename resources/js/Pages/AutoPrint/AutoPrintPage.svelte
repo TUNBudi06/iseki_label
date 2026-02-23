@@ -1,1230 +1,890 @@
 <script lang="ts">
-    import {
-        printModule,
-        type PrintModuleState,
-    } from '$lib/print-module-svelte.ts';
-    import {
-        Root as NativeSelectRoot,
-        Option as NativeSelectOption,
-    } from '$shadcn/components/ui/native-select';
     import { onMount, tick } from 'svelte';
+    import { fade, slide } from 'svelte/transition';
+    import { createMachine, assign, fromPromise } from 'xstate';
+    import { useMachine } from '@xstate/svelte';
+
+    // Stores & Modules
+    import { printModule, type PrintModuleState } from '$lib/print-module-svelte';
+    import { useInterval, IsMounted } from 'runed';
+    import { routeUrl } from '@tunbudi06/inertia-route-helper';
+
+    // API
+    import { listAuto, markAutoPrint } from '$routes/api/auto-print';
+
+    // Components
     import Navbar from '$/Layouts/Navbar.svelte';
+    import AutoRender from '$/Pages/AutoPrint/AutoRender.svelte';
+    import AnimatedBeam from '$lib/Beam/AnimatedBeam.svelte';
+    import StatusBadge from '$lib/components/StatusBadge.svelte';
+    import WorkflowNode from '$lib/components/WorkflowNode.svelte';
+
+    // Shadcn UI
+    import * as Card from '$shadcn/components/ui/card';
+    import { Label } from '$shadcn/components/ui/label';
+    import { Select, SelectTrigger, SelectContent, SelectItem } from '$shadcn/components/ui/select';
+    import { Button } from '$shadcn/components/ui/button';
+    import { Input } from '$shadcn/components/ui/input';
+    import { Badge } from '$shadcn/components/ui/badge';
+    import { Separator } from '$shadcn/components/ui/separator';
+
+    // Icons - @lucide/svelte
     import {
-        Root as CardRoot,
-        Header as CardHeader,
-        Content as CardContent,
-        Title as CardTitle,
-        Description as CardDescription,
-    } from '$shadcn/components/ui/card';
-    import {
-        Field as FieldRoot,
-        Label as FieldLabel,
-        Description as FieldDescription,
-    } from '$shadcn/components/ui/field';
-    import type { Printer as PrinterType } from '$lib/print-module.ts';
-    import {
-        PrinterCheck as PCIcon,
-        Play as PlayIcon,
-        SquareIcon,
-        User as UserIcon,
-        Database as DatabaseIcon,
-        SearchIcon,
-        CalendarClock as CalendarClockIcon,
+        PrinterCheck,
+        Play,
+        Square,
+        User,
+        Database,
+        Search,
+        CalendarClock,
         ChevronLeft,
-        BetweenHorizonalStart,
+        BetweenHorizontalStart,
         Shredder,
         HardDriveUpload,
-        Stamp
+        Stamp,
+        RefreshCw,
+        AlertCircle,
+        CheckCircle2,
+        Loader2
     } from '@lucide/svelte';
-    import { Button } from '$shadcn/components/ui/button';
-    import { useInterval, IsMounted } from 'runed';
-    import { Input } from '$shadcn/components/ui/input';
-    import AnimatedBeam from '$lib/Beam/AnimatedBeam.svelte';
-    import { routeUrl } from '@tunbudi06/inertia-route-helper';
-    import {listAuto, markAutoPrint} from '$routes/api/auto-print';
-    import RenderEngine from '$lib/print/RenderEngine.svelte';
-    import AutoRender from '$/Pages/AutoPrint/AutoRender.svelte';
-    import jsPDF from "jspdf";
-    import html2canvas from "html2canvas-pro";
 
-    // Page: Auto Print Service
-    // Responsibilities:
-    // - show print module / client state
-    // - periodically trigger `webTask` which animates the workflow and
-    //   fetches a list from the server to start printing.
+    // ============================================================================
+    // TYPES
+    // ============================================================================
+
+    interface WorkflowNodeData {
+        id: string;
+        label: string;
+        icon: any;
+        x: number;
+        y: number;
+    }
+
+    interface PrintContext {
+        queueData: any[];
+        renderedData: any[];
+        pdfBlob: Blob | null;
+        printOk: boolean;
+        uploadOk: boolean;
+        error: string | null;
+        lastRunAt: number | null;
+    }
+
+    // ============================================================================
+    // CONSTANTS
+    // ============================================================================
+
+    const DURATION_ANIMATION = 1.5;
+    const MIN_INTERVAL = 2000;
+
+    // ─── Layout (container 980 × 440) ───────────────────────────────────────────
+    // Row 1 (y=70):  client → scheduler → fetching → parsing → array_show
+    // Row 2 (y=210): datalist → rendering → generating → printing → print_ok
+    // Row 3 (y=350): (empty)               uploading → upload_ok
+    // ────────────────────────────────────────────────────────────────────────────
+    const WORKFLOW_NODES: WorkflowNodeData[] = [
+        // Row 1
+        { id: 'client',      label: 'Web Client', icon: User,                   x: 80,  y: 70  },
+        { id: 'scheduler',   label: 'Scheduler',  icon: CalendarClock,          x: 230, y: 70  },
+        { id: 'fetching',    label: 'Fetching',   icon: Search,                 x: 380, y: 70  },
+        { id: 'parsing',     label: 'Parse DB',   icon: Database,               x: 530, y: 70  },
+        { id: 'array_show',  label: 'Queue',      icon: ChevronLeft,            x: 680, y: 70  },
+        // Row 2
+        { id: 'datalist',    label: 'Data List',  icon: BetweenHorizontalStart, x: 80,  y: 210 },
+        { id: 'rendering',   label: 'Render',     icon: Shredder,               x: 230, y: 210 },
+        { id: 'generating',  label: 'Gen PDF',    icon: HardDriveUpload,        x: 380, y: 210 },
+        { id: 'printing',    label: 'Printing',   icon: Stamp,                  x: 530, y: 210 },
+        { id: 'print_ok',    label: 'Print OK',   icon: CheckCircle2,           x: 680, y: 210 },
+        // Row 3
+        { id: 'uploading',   label: 'Uploading',  icon: HardDriveUpload,        x: 380, y: 350 },
+        { id: 'upload_ok',   label: 'Upload OK',  icon: CheckCircle2,           x: 530, y: 350 },
+    ];
+
+    // ============================================================================
+    // XSTATE MACHINE - Graceful empty queue handling
+    // ============================================================================
+
+    const printMachine = createMachine({
+        id: 'printWorkflow',
+        initial: 'idle',
+        context: {
+            queueData: [],
+            renderedData: [],
+            pdfBlob: null,
+            printOk: false,
+            uploadOk: false,
+            error: null,
+            lastRunAt: null,
+        } as PrintContext,
+        states: {
+            // ── Waiting for next tick ───────────────────────────────────────────
+            idle: {
+                on: { START: 'scheduling' }
+            },
+
+            // ── Scheduler fires, prepare for run ───────────────────────────────
+            scheduling: {
+                entry: assign({ error: null, printOk: false, uploadOk: false }),
+                after: { [DURATION_ANIMATION * 1000]: 'fetching' }
+            },
+
+            // ── Hit API, get raw queue data ─────────────────────────────────────
+            fetching: {
+                invoke: {
+                    src: 'fetchQueueData',
+                    onDone: [
+                        {
+                            // Empty queue → skip silently back to idle
+                            guard: ({ event }) => event.output.length === 0,
+                            target: 'idle',
+                            actions: assign({ lastRunAt: () => Date.now() })
+                        },
+                        {
+                            target: 'parsing',
+                            actions: assign({
+                                queueData: ({ event }) => event.output,
+                                renderedData: ({ event }) => event.output,
+                                lastRunAt: () => Date.now(),
+                            })
+                        }
+                    ],
+                    onError: {
+                        target: 'error',
+                        actions: assign({ error: ({ event }) => (event.error as Error)?.message ?? String(event.error) })
+                    }
+                }
+            },
+
+            // ── Parse & store into context (represents DB write step) ──────────
+            parsing: {
+                after: { [DURATION_ANIMATION * 1000]: 'array_show' }
+            },
+
+            // ── Briefly show queue count in array node ─────────────────────────
+            array_show: {
+                after: { [DURATION_ANIMATION * 1000]: 'datalist' }
+            },
+
+            // ── Hand data to render engine (Data List node) ────────────────────
+            datalist: {
+                after: { [DURATION_ANIMATION * 1000]: 'rendering' }
+            },
+
+            // ── Render engine processes each item (Render node) ────────────────
+            rendering: {
+                // Longer pause: gives AutoRender DOM time to fully paint
+                after: { [DURATION_ANIMATION * 1000 + 500]: 'generating' }
+            },
+
+            // ── Generate the PDF blob ───────────────────────────────────────────
+            generating: {
+                invoke: {
+                    src: 'generatePdf',
+                    onDone: {
+                        target: 'printing',
+                        actions: assign({ pdfBlob: ({ event }) => event.output })
+                    },
+                    onError: {
+                        target: 'error',
+                        actions: assign({ error: ({ event }) => (event.error as Error)?.message ?? String(event.error) })
+                    }
+                }
+            },
+
+            // ── Send to printer ─────────────────────────────────────────────────
+            printing: {
+                invoke: {
+                    src: 'executePrint',
+                    input: ({ context }: { context: PrintContext }) => context,
+                    onDone: {
+                        target: 'print_ok',
+                        actions: assign({ printOk: true })
+                    },
+                    onError: {
+                        target: 'error',
+                        actions: assign({ error: ({ event }) => (event.error as Error)?.message ?? String(event.error) })
+                    }
+                }
+            },
+
+            // ── Print success confirmation node ─────────────────────────────────
+            print_ok: {
+                after: { [DURATION_ANIMATION * 1000]: 'uploading' }
+            },
+
+            // ── Upload result / mark jobs done in DB ────────────────────────────
+            // If this fails everything stops (goes to error, service pauses)
+            uploading: {
+                invoke: {
+                    src: 'executeUpload',
+                    input: ({ context }: { context: PrintContext }) => context,
+                    onDone: {
+                        target: 'upload_ok',
+                        actions: assign({ uploadOk: true })
+                    },
+                    onError: {
+                        // Hard stop — upload failure means data integrity risk
+                        target: 'error',
+                        actions: assign({ error: ({ event }) => (event.error as Error)?.message ?? String(event.error) })
+                    }
+                }
+            },
+
+            // ── Upload success, cycle complete ──────────────────────────────────
+            upload_ok: {
+                after: { [DURATION_ANIMATION * 1000]: 'idle' },
+                entry: assign({
+                    queueData: [],
+                    renderedData: [],
+                    pdfBlob: null,
+                })
+            },
+
+            // ── Hard error — service stops, user must dismiss ───────────────────
+            error: {
+                on: { RESET: 'idle' }
+                // No auto-reset: upload errors must be manually acknowledged
+            }
+        }
+    }).provide({
+        actors: {
+            fetchQueueData: fromPromise(async () => {
+                const response = await fetch(routeUrl(listAuto()));
+                if (!response.ok) throw new Error('Failed to fetch print queue');
+                return response.json();
+            }),
+
+            generatePdf: fromPromise(async () => {
+                if (!labelContainerRef) throw new Error('Label container not ready');
+
+                // Wait for Svelte to flush DOM updates from renderedData
+                await tick();
+                await new Promise(r => setTimeout(r, 300));
+
+                const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+                    import('jspdf'),
+                    import('html2canvas-pro')
+                ]);
+
+                const sheets = labelContainerRef.querySelectorAll('.A4-print-page');
+                if (!sheets.length) throw new Error('No pages to print');
+
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const imgWidth = 210;
+                for (let i = 0; i < sheets.length; i++) {
+                    const sheet = sheets[i] as HTMLElement;
+                    const canvas = await html2canvas(sheet, {
+                        scale: 3, useCORS: true, logging: false,
+                        width: sheet.offsetWidth, height: sheet.offsetHeight,
+                    });
+                    if (i > 0) pdf.addPage();
+                    const canvasHeight = (canvas.height * imgWidth) / canvas.width;
+                    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, Math.min(canvasHeight, 297));
+                }
+                return pdf.output('blob');
+            }),
+
+            executePrint: fromPromise(async ({ input }: { input: PrintContext }) => {
+                if (!input.pdfBlob || !selectedPrinter) throw new Error('Missing PDF or printer');
+                // TODO: call local print service
+                console.log('Printing to:', selectedPrinter, 'size:', input.pdfBlob.size);
+
+                // // download for test the result
+                // const url = URL.createObjectURL(input.pdfBlob);
+                // const link = document.createElement('a');
+                // link.href = url;
+                // link.download = `print-job-${Date.now()}.pdf`;
+                // document.body.appendChild(link);
+                // link.click();
+                // document.body.removeChild(link);
+                // URL.revokeObjectURL(url);
+
+                await new Promise(r => setTimeout(r, 1000));
+            }),
+
+            executeUpload: fromPromise(async ({ input }: { input: PrintContext }) => {
+                const ids = input.queueData.map((item: any) => item.id);
+                const formData = new FormData();
+                formData.append('ids', JSON.stringify(ids));
+                const response = await fetch(routeUrl(markAutoPrint()), { method: 'POST', body: formData });
+                if (!response.ok) throw new Error('Upload failed — service stopped');
+            }),
+        }
+    } as any);
+
+    // ============================================================================
+    // COMPONENT STATE
+    // ============================================================================
 
     let printerState = $state<PrintModuleState | null>(null);
-    let mounted = new IsMounted();
-    let usedPrinter = $state<string | null>(null);
-    let printerUsedState = $state<PrinterType | null>(null);
-    let intervalSetting = $state<number>(1000);
+    let selectedPrinter = $state<string | undefined>(undefined);
+    let intervalMs = $state<number>(5000);
 
+    // Refs
+    let containerRef = $state<HTMLElement | null>(null);
+    let labelContainerRef = $state<HTMLElement | null>(null);
+    let nodeRefs: Record<string, HTMLElement | null> = $state({});
+
+    // Services
     const printer = printModule();
+    const mounted = new IsMounted();
 
-    $effect(() => {
-        if (
-            mounted &&
-            usedPrinter &&
-            printerState &&
-            printerState.printer_list.some((p) => p.name === usedPrinter)
-        ) {
-            printerUsedState =
-                printerState.printer_list.find((p) => p.name === usedPrinter) ??
-                null;
-        }
-    });
+    // XState machine
+    const { snapshot, send } = useMachine(printMachine);
 
-    async function fetchPrinterState() {
-        printerState = await printer.init();
-        usedPrinter = printerState?.default_printer?.name ?? null;
-    }
+    // ============================================================================
+    // DERIVED STATE
+    // ============================================================================
 
-    onMount(() => {
-        fetchPrinterState();
-    });
+    const activePrinter = $derived(
+        printerState?.printer_list.find(p => p.name === selectedPrinter) ?? null
+    );
 
-    let startTask = $state(false);
-    let containerRef: HTMLElement | null = $state(null);
-    let webClient: HTMLElement | null = $state(null);
-    let scheduler: HTMLElement | null = $state(null);
-    // additional element refs
-    let fetchingRef: HTMLElement | null = $state(null);
-    let databaseRef: HTMLElement | null = $state(null);
-    let arrayRef: HTMLElement | null = $state(null);
-    let dataListRef: HTMLElement | null = $state(null);
-    let generatingRef: HTMLElement | null = $state(null);
-    let uploadingRef: HTMLElement | null = $state(null);
-    let resultUploudingRef: HTMLElement | null = $state(null);
-    let resultPrintingRef: HTMLElement | null = $state(null);
-    let printingRef: HTMLElement | null = $state(null);
+    const isReady = $derived(
+        printerState?.initialized && activePrinter?.status === 'Ready'
+    );
 
-    let taskIsRunning = $state(false);
-    let databaseData = $state<any[]>([]);
-    async function webTask() {
-        if (taskIsRunning) return;
-        taskIsRunning = true;
-        await tick();
-        startTask = true;
-    }
+    const canStart = $derived(
+        isReady && $snapshot.value === 'idle'
+    );
 
-    let startScanDb = $state(false);
-    let startPrinting = $state(false);
-    async function schedulerTask() {
-        startTask = false;
-        if (databaseData && databaseData.length == 0) {
-            startScanDb = true;
-        } else {
-            startPrinting = true;
-        }
-    }
+    // ============================================================================
+    // INTERVAL MANAGEMENT
+    // ============================================================================
 
-    const interval = useInterval(() => intervalSetting, {
+    const interval = useInterval(() => Math.max(intervalMs, MIN_INTERVAL), {
         immediate: false,
-        callback: () => webTask(),
+        callback: async () => {
+            if ($snapshot.value === 'idle') {
+                send({ type: 'START' });
+            }
+        },
     });
 
-    // let durationAnimation = $derived.by(()=>{
-    //     const interval = intervalSetting/1000;
-    //     if(interval <= 0) {
-    //         return 1;
-    //     }
-    //     return Math.min(interval * 0.3, 5);
-    // })
-    // $inspect(durationAnimation, 'durationAnimation')
+    // ============================================================================
+    // LIFECYCLE
+    // ============================================================================
 
-    const durationAnimation = 2; //let's keep it simple for now, can be derived from intervalSetting if needed
+    onMount(async () => {
+        await initializePrinter();
+    });
 
-    let startedFetching = $state(false);
-    async function fetchingDataFunction() {
-        startedFetching = true;
-        startScanDb = false;
-        const fetchdata = await fetch(routeUrl(listAuto()), {
-            method: 'get',
-        })
-            .then((res) => {
-                if (res.ok) {
-                    // @ts-ignore
-                    return res.json();
-                }
-                throw new Error('Failed to fetch data');
-            })
-            .catch((err) => {
-                console.error(err);
-                return [];
-            })
-            .finally(() => {
-                startedFetching = false;
-            });
-        console.log('Fetched data:', fetchdata);
-        databaseData = fetchdata;
-    }
+    // ============================================================================
+    // PRINTER METHODS
+    // ============================================================================
 
-    let arrayFetched = $state(false);
-    let arrayCount = $state(0);
-    async function resultTask() {
-        arrayCount = databaseData ? databaseData.length : 0;
-        startedFetching = false;
-        arrayFetched = true;
-    }
-
-    let dataBind = $state<any[]>([]);
-    async function DataBaseListParse() {
-        arrayFetched=false
-        taskIsRunning = false;
-    }
-
-    let labelRenderStarted = $state(false);
-    function LabelLister() {
-        startPrinting = false;
-        dataBind = databaseData ? databaseData : [];
-        labelRenderStarted = true;
-    }
-
-    let labelContainer = $state<HTMLElement>();
-    let pdfBlob = $state<Blob>()
-    async function renderAndGenerateLabel(){
-        labelRenderStarted = false;
-        if (!labelContainer) {
-            taskIsRunning = false;
-            return;
-        }
-
-        let query = labelContainer.querySelectorAll('.A4-print-page');
-        console.log('Found pages:', query.length);
-
+    async function initializePrinter() {
         try {
-            // Cari semua A4Sheet elements
-            const sheets = labelContainer.querySelectorAll('.A4-print-page');
-
-            if (sheets.length === 0) {
-                return;
-            }
-
-            console.log(`Found ${sheets.length} pages to print`);
-
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const imgWidth = 210; // A4 width in mm
-            const imgHeight = 297; // A4 height in mm
-
-            // Process setiap sheet satu per satu
-            for (let i = 0; i < sheets.length; i++) {
-                const sheet = sheets[i] as HTMLElement;
-
-                console.log(`Processing page ${i + 1}/${sheets.length}...`);
-
-                // Convert sheet to canvas
-                const canvas = await html2canvas(sheet, {
-                    scale: 3, // High quality
-                    useCORS: true,
-                    logging: false,
-                    width: sheet.offsetWidth,
-                    height: sheet.offsetHeight,
-                });
-
-                const imgData = canvas.toDataURL('image/png');
-
-                // Add new page for subsequent pages
-                if (i > 0) {
-                    pdf.addPage();
-                }
-
-                // Calculate dimensions to fit A4
-                const canvasWidth = imgWidth;
-                const canvasHeight = (canvas.height * imgWidth) / canvas.width;
-
-                // Add image to current PDF page
-                pdf.addImage(
-                    imgData,
-                    'PNG',
-                    0,
-                    0,
-                    canvasWidth,
-                    Math.min(canvasHeight, imgHeight),
-                );
-
-                console.log(`Page ${i + 1} added to PDF`);
-            }
-
-            // Generate Blob instead of saving
-            pdfBlob = pdf.output('blob');
-
-            // Optional: Buat URL untuk preview/download manual
-            // const pdfUrl = URL.createObjectURL(pdfBlob);
-
-            // Optional: Simpan ke variable atau kirim ke server
-            // const formData = new FormData();
-            // formData.append('pdf', pdfBlob, `iseki-labels-${sheets.length}pages.pdf`);
-
-            // console.log('PDF Blob generated:', pdfBlob);
-            // console.log('PDF URL:', pdfUrl);
-
-            // Contoh: Auto-download dengan nama custom
-            // const link = document.createElement('a');
-            // link.href = pdfUrl;
-            // link.download = `iseki-labels-${sheets.length}pages-${timestamp}.pdf`;
-            // link.click();
-
-            // pdf.save('test.pdf')
-
-            // Return blob jika perlu
-            // return pdfBlob;
-
-        } catch (error) {
-            console.error('Error generating multi-page PDF:', error);
-            alert('Error generating PDF. Check console for details.');
-            throw error;
-        } finally {
-            startUploading = true;
+            printerState = await printer.init();
+            selectedPrinter = printerState?.default_printer?.name ?? undefined;
+        } catch (err) {
+            console.error(err);
         }
     }
 
-    let startUploading = $state(false);
-    let UploadingDone = $state(false);
-    let uploadingResult = $state(false);
-    async function labelUplouding(){
-        startUploading = false
+    // ============================================================================
+    // UI HELPERS
+    // ============================================================================
 
-        let ids = databaseData ? databaseData.map((item)=>{
-            return item.id
-        }) : [];
-        const formdata = new FormData();
-        formdata.append('ids', JSON.stringify(ids));
+    function getNodeStatus(nodeId: string): 'pending' | 'active' | 'completed' | 'error' {
+        const v = $snapshot.value as string;
 
-        await fetch(routeUrl(markAutoPrint()), {
-            method: 'post',
-            body: formdata
-        }).then(async (res)=>{
-            if(res.ok) {
-                console.log('Upload successful',await res.json());
-                UploadingDone = true;
-            } else {
-                console.error('Upload failed');
-                UploadingDone = false;
-            }
-        }).catch((err)=>{
-            console.error('Error during upload:', err);
-            UploadingDone = false;
-        })
-        uploadingResult = true
+        // Ordered list of states in execution order
+        const stateOrder = [
+            'idle',
+            'scheduling',
+            'fetching',
+            'parsing',
+            'array_show',
+            'datalist',
+            'rendering',
+            'generating',
+            'printing',
+            'print_ok',
+            'uploading',
+            'upload_ok',
+        ];
+
+        // Which node(s) are highlighted (active) for each state
+        const activeMap: Record<string, string[]> = {
+            idle:       [],
+            scheduling: ['client', 'scheduler'],
+            fetching:   ['fetching'],
+            parsing:    ['parsing'],
+            array_show: ['array_show'],
+            datalist:   ['datalist'],
+            rendering:  ['rendering'],
+            generating: ['generating'],
+            printing:   ['printing'],
+            print_ok:   ['print_ok'],
+            uploading:  ['uploading'],
+            upload_ok:  ['upload_ok'],
+            error:      [],
+        };
+
+        // A node is "done" (completed) after which state? First state that lists it.
+        // A node is "completed" when the machine has moved PAST that state.
+        const nodeCompletesAfterState: Record<string, string> = {
+            client:      'scheduling',
+            scheduler:   'scheduling',
+            fetching:    'fetching',
+            parsing:     'parsing',
+            array_show:  'array_show',
+            datalist:    'datalist',
+            rendering:   'rendering',
+            generating:  'generating',
+            printing:    'printing',
+            print_ok:    'print_ok',
+            uploading:   'uploading',
+            upload_ok:   'upload_ok',
+        };
+
+        const currentIdx = stateOrder.indexOf(v);
+        const activeNodes = activeMap[v] ?? [];
+
+        // Error state: show nodes that were completed before the error
+        if (v === 'error') {
+            // We don't know exactly where it failed, so show all as pending
+            // (the error banner shows the message)
+            return 'pending';
+        }
+
+        // Currently active node
+        if (activeNodes.includes(nodeId)) return 'active';
+
+        // Completed: this node's state already passed
+        const completesAfter = nodeCompletesAfterState[nodeId];
+        if (completesAfter) {
+            const completesIdx = stateOrder.indexOf(completesAfter);
+            if (currentIdx > completesIdx) return 'completed';
+        }
+
+        return 'pending';
     }
 
-    let statusUploading = $state("");
-    async function labelUploudingResult(){
-        uploadingResult = false
-        statusUploading = UploadingDone ? "OK" : "NG";
-        setTimeout(() => {
-            statusUploading = "";
-            taskIsRunning = false;
-        }, 2000)
-    }
+    // Stop interval automatically on error so it doesn't keep retrying
+    $effect(() => {
+        if ($snapshot.value === 'error' && interval.isActive) {
+            interval.pause();
+        }
+    });
 
-    // function label
-    let printingDone = $state(false);
-    let printingResult = $state(false);
-    function labelPrinting(){
-        if(pdfBlob) {
-            // lakukan proses printing dengan pdfBlob
-            console.log('Ready to print PDF Blob:', pdfBlob);
-            UploadingDone = true;
-            dataBind = databaseData = [];
+    function toggleService() {
+        if (interval.isActive) {
+            interval.pause();
         } else {
-            console.error('No PDF Blob available for printing');
+            interval.resume();
         }
     }
 
-    let statusPrinting = $state("");
-    async function labelPrintingResult(){
-        statusPrinting = printingDone ? "OK" : "NG";
-        setTimeout(() => {
-            statusPrinting = "";
-            // taskIsRunning = false; // commented because if uploading fails this will running again and again
-        }, 2000)
+    function setNodeRef(nodeId: string, el: HTMLElement | null) {
+        if (el) nodeRefs[nodeId] = el;
     }
 
+    function formatLastRun(timestamp: number | null): string {
+        if (!timestamp) return 'Never';
+        const diff = Date.now() - timestamp;
+        if (diff < 60000) return 'Just now';
+        if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+        return new Date(timestamp).toLocaleTimeString();
+    }
+
+    // ============================================================================
+    // DOCUMENTATION DATA
+    // ============================================================================
+
+    const workflowStages = [
+        { phase: 'Web Client', desc: 'Entry point. Driven by scheduler interval.', trigger: 'START' },
+        { phase: 'Scheduler', desc: 'Determines next step based on queue status.', trigger: 'auto' },
+        { phase: 'Fetching', desc: 'Calls API to retrieve pending print jobs.', trigger: 'fetchQueueData' },
+        { phase: 'Database', desc: 'Staging storage. Populated after successful fetch.', trigger: 'data loaded' },
+        { phase: 'Queue', desc: 'Visual counter showing pending job count.', trigger: 'queueData.length' },
+        { phase: 'Data List', desc: 'Processed jobs forwarded to render stage.', trigger: 'auto' },
+        { phase: 'Generate', desc: 'Renders each job to print format (PDF/HTML).', trigger: 'generatePdf' },
+        { phase: 'Print', desc: 'Sends to printer and uploads status.', trigger: 'executePrintAndUpload' },
+        { phase: 'Result', desc: 'Final status. Resets task lock for next cycle.', trigger: 'auto' },
+    ];
+
+    const troubleshooting = [
+        {
+            problem: 'Client shows "Not initialized" or no printers listed',
+            solution: 'Start the local Python print service (server.py) and click Refresh Status.'
+        },
+        {
+            problem: 'Fetching returns empty array but jobs exist in DB',
+            solution: 'Check that listAuto route returns correct data and authentication is valid.'
+        },
+        {
+            problem: 'Animation moves but nothing prints',
+            solution: 'Verify selected printer name matches OS printer exactly. Check SumatraPDF logs in tmp/print_jobs/.'
+        },
+        {
+            problem: 'Multiple processes overlap / counter keeps incrementing',
+            solution: 'Refresh page to reset status. XState prevents overlapping via state machine guards.'
+        }
+    ];
 </script>
 
 <Navbar>
-    <div class="space-y-4">
-        <div class="flex flex-col items-center justify-center w-full">
-            <h1 class="text-4xl font-bold mb-4">Auto Print Page Mode</h1>
-            <p class="text-lg text-gray-600 mb-8">
-                This page will automatically print when auto print from client
-                is used.
+    <div class="container mx-auto max-w-7xl space-y-6 p-4">
+        <!-- Header -->
+        <div class="text-center space-y-2" in:fade>
+            <h1 class="text-4xl font-bold tracking-tight">Auto Print Service</h1>
+            <p class="text-muted-foreground text-lg max-w-2xl mx-auto">
+                Automated label printing with visual workflow monitoring. Powered by XState.
             </p>
         </div>
 
-        <CardRoot>
-            <CardHeader>
-                <CardTitle>Print Module State</CardTitle>
-                <CardDescription>
-                    Checking client state are Connected and Ready to Print, and
-                    the print module is initialized successfully.
-                </CardDescription>
-            </CardHeader>
+        <!-- Status Bar - Only show real errors, not empty queue -->
+        {#if $snapshot.context.error}
+            <div class="bg-destructive/10 text-destructive px-4 py-3 rounded-lg flex items-center gap-3" transition:slide>
+                <AlertCircle class="w-5 h-5" />
+                <span class="font-medium">{$snapshot.context.error}</span>
+                <Button variant="ghost" size="sm" onclick={() => send({ type: 'RESET' })} class="ml-auto">Dismiss</Button>
+            </div>
+        {/if}
 
-            <CardContent>
-                <div
-                    class="w-full p-4 rounded-xl bg-pink-50 flex flex-col gap-6 md:flex-row md:gap-6"
-                >
-                    <!-- LEFT COLUMN -->
-                    <div
-                        class="grid grid-cols-2 gap-y-2 text-sm sm:text-base md:w-1/3"
-                    >
-                        <p class="font-medium">Client Initialized</p>
-                        <p class="font-medium">
-                            : {printerState?.initialized ?? 'No'}
-                        </p>
+        <!-- Info Bar - Show last run status when idle -->
+        {#if $snapshot.value === 'idle' && $snapshot.context.lastRunAt}
+            <div class="bg-muted/50 px-4 py-2 rounded-lg flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle2 class="w-4 h-4 text-green-500" />
+                <span>Last check: {formatLastRun($snapshot.context.lastRunAt)} • Queue: {$snapshot.context.queueData.length} items</span>
+            </div>
+        {/if}
 
-                        <p class="font-medium">Client OS</p>
-                        <p class="font-medium">
-                            : {printerState?.os ?? 'Null'}
-                        </p>
-
-                        <p class="font-medium">Client Host</p>
-                        <p class="font-medium">
-                            : {printerState?.hostname ?? 'Null'}
-                        </p>
-
-                        <p class="font-medium">Client Id</p>
-                        <p class="font-medium">
-                            : {printerState?.client_id ?? 'Null'}
-                        </p>
+        <!-- Printer Status Card -->
+        <Card.Root class="border-l-4 {isReady ? 'border-l-green-500' : 'border-l-amber-500'}">
+            <Card.Header class="pb-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <Card.Title class="text-xl flex items-center gap-2">
+                            <PrinterCheck class="w-5 h-5" />
+                            Print Module Status
+                        </Card.Title>
+                        <Card.Description>
+                            Local client connection and printer readiness
+                        </Card.Description>
                     </div>
+                    <StatusBadge
+                        status={isReady ? 'ready' : printerState?.initialized ? 'warning' : 'error'}
+                        text={isReady ? 'Ready' : printerState?.initialized ? 'Check Printer' : 'Not Connected'}
+                    />
+                </div>
+            </Card.Header>
 
-                    <!-- MIDDLE COLUMN -->
-                    <div
-                        class="grid grid-cols-2 gap-y-2 gap-x-3 text-sm sm:text-base md:w-1/3"
-                    >
-                        <p class="font-medium">Printer Name</p>
-                        <p class="font-medium">
-                            : {printerUsedState?.name ?? 'Null'}
-                        </p>
-
-                        <p class="font-medium">Printer Status</p>
-                        <p class="font-medium">
-                            : {printerUsedState?.status ?? 'Null'}
-                        </p>
-
-                        <div
-                            class="col-span-2 flex flex-col sm:flex-row gap-2 mt-2"
-                        >
-                            <p class="font-medium sm:w-40">Printer Used:</p>
-
-                            <NativeSelectRoot
-                                bind:value={usedPrinter}
-                                class="w-full sm:w-auto bg-pink-50 text-black"
-                            >
-                                {#each printerState?.printer_list ?? [] as p}
-                                    <NativeSelectOption value={p.name}>
-                                        {p.name}
-                                    </NativeSelectOption>
-                                {/each}
-                            </NativeSelectRoot>
-                        </div>
-                    </div>
-
-                    <!-- RIGHT COLUMN -->
-                    <div
-                        class="flex justify-center items-center text-center md:w-1/3"
-                    >
-                        {#if printerState?.initialized && printerUsedState?.status === 'Ready'}
-                            <div class="flex flex-col items-center gap-2">
-                                <PCIcon class="text-green-500" size={48} />
-                                <p class="text-green-500 font-medium">
-                                    Ready to Print
-                                </p>
+            <Card.Content>
+                <div class="grid gap-6 md:grid-cols-3">
+                    <!-- Client Info -->
+                    <div class="space-y-3">
+                        <h4 class="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Client</h4>
+                        <dl class="space-y-1 text-sm">
+                            <div class="flex justify-between">
+                                <dt class="text-muted-foreground">Initialized</dt>
+                                <dd class="font-medium">{printerState?.initialized ? 'Yes' : 'No'}</dd>
                             </div>
-                        {:else}
-                            <button
-                                onclick={fetchPrinterState}
-                                class="px-4 py-2 rounded bg-pink-500 text-white hover:bg-pink-600 transition"
-                            >
-                                Refresh State
-                            </button>
+                            <div class="flex justify-between">
+                                <dt class="text-muted-foreground">OS</dt>
+                                <dd class="font-medium">{printerState?.os ?? '—'}</dd>
+                            </div>
+                            <div class="flex justify-between">
+                                <dt class="text-muted-foreground">Host</dt>
+                                <dd class="font-medium truncate max-w-37.5">{printerState?.hostname ?? '—'}</dd>
+                            </div>
+                        </dl>
+                    </div>
+
+                    <!-- Printer Selection -->
+                    <div class="space-y-3">
+                        <h4 class="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Printer</h4>
+                        <Select
+                            type="single"
+                            value={selectedPrinter}
+                            onValueChange={(v) => (selectedPrinter = v)}
+                            disabled={!printerState?.printer_list.length}
+                        >
+                            <SelectTrigger class="w-full">
+                                {selectedPrinter ?? 'Select printer...'}
+                            </SelectTrigger>
+                            <SelectContent>
+                                {#each printerState?.printer_list ?? [] as p}
+                                    <SelectItem value={p.name}>
+                                        <div class="flex items-center justify-between w-full">
+                                            <span>{p.name}</span>
+                                            {#if p.default}
+                                                <Badge variant="secondary" class="ml-2">Default</Badge>
+                                            {/if}
+                                        </div>
+                                    </SelectItem>
+                                {/each}
+                            </SelectContent>
+                        </Select>
+
+                        {#if activePrinter}
+                            <div class="flex items-center gap-2 text-sm">
+                                <span class="text-muted-foreground">Status:</span>
+                                <Badge variant={activePrinter.status === 'Ready' ? 'default' : 'secondary'}>
+                                    {activePrinter.status}
+                                </Badge>
+                            </div>
+                        {/if}
+                    </div>
+
+                    <!-- Controls -->
+                    <div class="flex flex-col justify-center gap-3">
+                        <Button
+                            variant="outline"
+                            onclick={initializePrinter}
+                            class="w-full"
+                            disabled={!mounted.current}
+                        >
+                            <RefreshCw class="w-4 h-4 mr-2 {mounted.current ? '' : 'animate-spin'}" />
+                            Refresh Status
+                        </Button>
+
+                        {#if !isReady}
+                            <p class="text-xs text-muted-foreground text-center">
+                                Start the local print service and refresh to connect
+                            </p>
                         {/if}
                     </div>
                 </div>
-            </CardContent>
-        </CardRoot>
+            </Card.Content>
+        </Card.Root>
 
-        <CardRoot>
-            <CardHeader>
-                <CardTitle class="text-2xl">Auto Print Service</CardTitle>
-                {#if interval.isActive}
-                    <Button
-                        variant="outline"
-                        onclick={() => interval.pause()}
-                        class="border-orange-300 w-40"
-                        ><SquareIcon class="bg-red-800/50" /> Stop</Button
-                    >
-                {:else}
-                    <Button
-                        variant="outline"
-                        onclick={() => interval.resume()}
-                        class="border-orange-300 w-40"
-                        ><PlayIcon class="text-green-800" /> Start</Button
-                    >
-                {/if}
-                <FieldRoot>
-                    <FieldLabel for="interval">Interval</FieldLabel>
-                    <Input
-                        id="interval"
-                        bind:value={intervalSetting}
-                        autocomplete="on"
-                        placeholder="Evil Rabbit"
-                    />
-                    <FieldDescription>
-                        Set the interval for auto print checking, in
-                        milliseconds. <span class="text-sm text-gray-600"
-                            >(counter: {interval.counter})</span
+        <!-- Workflow Control Card -->
+        <Card.Root>
+            <Card.Header>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <Card.Title>Workflow Control</Card.Title>
+                        <Card.Description>
+                            Manage automated print cycles • XState: <code class="text-xs bg-muted px-1 rounded">{$snapshot.value}</code>
+                        </Card.Description>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <Button
+                            variant={interval.isActive ? 'destructive' : 'default'}
+                            onclick={toggleService}
+                            disabled={!canStart && !interval.isActive}
+                            class="min-w-30"
                         >
-                    </FieldDescription>
-                </FieldRoot>
-            </CardHeader>
-            <CardContent class=" m-2">
-                <div class="overflow-x-auto w-full">
-                    <div
-                        class="w-380 bg-pink-500/40 h-128 rounded-xl relative"
-                        bind:this={containerRef}
-                    >
-                        <div
-                            bind:this={webClient}
-                            class="absolute w-28 flex h-16 top-20 left-20 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                        >
-                            <UserIcon />
-                            <span class="text-xs text-gray-100 text-shadow-2xs"
-                                >Web Client</span
-                            >
-                        </div>
-
-                        <div
-                            bind:this={scheduler}
-                            class="absolute w-28 flex h-16 top-20 left-90 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                        >
-                            <CalendarClockIcon />
-                            <span
-                                class="text-xs text-gray-100 text-shadow-2xs ps-2"
-                                >Scheduler</span
-                            >
-                        </div>
-
-                        <div
-                            bind:this={fetchingRef}
-                            class="absolute w-28 flex h-16 top-20 left-160 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                        >
-                            <SearchIcon />
-                            <span
-                                class="text-xs text-gray-100 text-shadow-2xs ps-2"
-                                >Fetching</span
-                            >
-                        </div>
-
-                        <div
-                            bind:this={databaseRef}
-                            class="absolute w-28 flex h-16 top-20 left-240 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                        >
-                            <DatabaseIcon />
-                            <span
-                                class="text-xs text-gray-100 text-shadow-2xs ps-2"
-                                >Database</span
-                            >
-                        </div>
-
-                        <div
-                            bind:this={arrayRef}
-                            class="absolute w-28 flex h-16 top-20 left-320 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                        >
-                            <ChevronLeft />{arrayCount}<ChevronLeft
-                                class="rotate-180"
-                            />
-                            <span
-                                class="text-xs text-gray-100 text-shadow-2xs ps-2"
-                                >Array</span
-                            >
-                        </div>
-
-                        <div
-                            bind:this={dataListRef}
-                            class="absolute w-28 flex h-16 top-60 left-90 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                        >
-                            <BetweenHorizonalStart />
-                            <span
-                                class="text-xs text-gray-100 text-shadow-2xs ps-2"
-                                >Data List</span
-                            >
-                        </div>
-
-                        <div
-                            bind:this={generatingRef}
-                            class="absolute w-28 flex h-16 top-60 left-160 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                        >
-                            <Shredder />
-                            <span
-                                class="text-xs text-gray-100 text-shadow-2xs ps-2"
-                                >Generating Rendering</span
-                            >
-                        </div>
-
-                        <div
-                            bind:this={printingRef}
-                            class="absolute w-28 flex h-16 top-60 left-240 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                        >
-                            <Stamp />
-                            <span
-                                class="text-xs text-gray-100 text-shadow-2xs ps-2"
-                                >Printing</span
-                            >
-                        </div>
-
-                        <div
-                            bind:this={resultPrintingRef}
-                            class="absolute w-28 flex h-16 top-60 left-320 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                        >
-                            <ChevronLeft /><ChevronLeft class="rotate-180" />
-                            <span
-                                class="text-xs text-gray-100 text-shadow-2xs ps-2"
-                                >Result</span
-                            >
-                        </div>
-
-                        <div
-                            bind:this={uploadingRef}
-                            class="absolute w-28 flex h-16 top-95 left-240 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                        >
-                            <HardDriveUpload />
-                            <span
-                                class="text-xs text-gray-100 text-shadow-2xs ps-2"
-                                >Uploading</span
-                            >
-                        </div>
-
-                        <div
-                            bind:this={resultUploudingRef}
-                            class="absolute w-28 flex h-16 top-95 left-320 bg-linear-to-br justify-center content-center text-center items-center from-pink-400 p-1 to-purple-400 rounded-2xl"
-                        >
-                            <ChevronLeft />{statusUploading}<ChevronLeft class="rotate-180" />
-                            <span
-                                class="text-xs text-gray-100 text-shadow-2xs ps-2"
-                                >Result</span
-                            >
-                        </div>
-
-                        <AnimatedBeam
-                            duration={durationAnimation}
-                            trigger={startTask}
-                            pathColor="black"
-                            startXOffset={60}
-                            endXOffset={-50}
-                            bind:containerRef
-                            bind:fromRef={webClient}
-                            gradientStartColor="#2b7cff"
-                            gradientStopColor="#00e5ff"
-                            pathWidth={4}
-                            bind:toRef={scheduler}
-                            onAnimationComplete={() => schedulerTask()}
-                        />
-                        <AnimatedBeam
-                            duration={durationAnimation}
-                            trigger={startScanDb}
-                            pathColor="black"
-                            startXOffset={60}
-                            endXOffset={-50}
-                            bind:containerRef
-                            bind:fromRef={scheduler}
-                            bind:toRef={fetchingRef}
-                            gradientStartColor="#2b7cff"
-                            gradientStopColor="#00e5ff"
-                            pathWidth={4}
-                            onAnimationComplete={() => fetchingDataFunction()}
-                        />
-                        <AnimatedBeam
-                            duration={durationAnimation}
-                            trigger={startedFetching}
-                            pathColor="black"
-                            startXOffset={60}
-                            endXOffset={-50}
-                            bind:containerRef
-                            bind:fromRef={fetchingRef}
-                            bind:toRef={databaseRef}
-                            gradientStartColor="#2b7cff"
-                            gradientStopColor="#00e5ff"
-                            pathWidth={4}
-                            onAnimationComplete={() => resultTask()}
-                        />
-                        <AnimatedBeam
-                            duration={durationAnimation}
-                            trigger={arrayFetched}
-                            pathColor="black"
-                            startXOffset={60}
-                            endXOffset={-50}
-                            bind:containerRef
-                            bind:fromRef={databaseRef}
-                            bind:toRef={arrayRef}
-                            gradientStartColor="#2b7cff"
-                            gradientStopColor="#00e5ff"
-                            pathWidth={4}
-                            onAnimationComplete={()=> DataBaseListParse()}
-                        />
-
-                        <!--                    PRINTING BEAM-->
-                        <AnimatedBeam
-                            duration={durationAnimation}
-                            trigger={startPrinting}
-                            pathColor="black"
-                            startYOffset={35}
-                            endYOffset={-35}
-                            bind:containerRef
-                            bind:fromRef={scheduler}
-                            bind:toRef={dataListRef}
-                            gradientStartColor="#2b7cff"
-                            gradientStopColor="#00e5ff"
-                            pathWidth={6}
-                            onAnimationComplete={()=> LabelLister()}
-                        />
-
-                        <AnimatedBeam
-                            duration={durationAnimation}
-                            trigger={labelRenderStarted}
-                            pathColor="black"
-                            startXOffset={60}
-                            endXOffset={-50}
-                            bind:containerRef
-                            bind:fromRef={dataListRef}
-                            bind:toRef={generatingRef}
-                            gradientStartColor="#2b7cff"
-                            gradientStopColor="#00e5ff"
-                            pathWidth={4}
-                            onAnimationComplete={()=> renderAndGenerateLabel()}
-                        />
-
-                        <AnimatedBeam
-                            duration={durationAnimation}
-                            trigger={startUploading}
-                            pathColor="black"
-                            startXOffset={60}
-                            endXOffset={-50}
-                            curvature={-140}
-                            bind:containerRef
-                            bind:fromRef={generatingRef}
-                            bind:toRef={uploadingRef}
-                            gradientStartColor="#2b7cff"
-                            gradientStopColor="#00e5ff"
-                            pathWidth={4}
-                            onAnimationComplete={()=> labelUplouding()}
-                        />
-
-                        <AnimatedBeam
-                            duration={durationAnimation}
-                            trigger={startUploading}
-                            pathColor="black"
-                            startXOffset={60}
-                            endXOffset={-50}
-                            bind:containerRef
-                            bind:fromRef={generatingRef}
-                            bind:toRef={printingRef}
-                            gradientStartColor="#2b7cff"
-                            gradientStopColor="#00e5ff"
-                            pathWidth={4}
-                            onAnimationComplete={()=> labelPrinting()}
-                        />
-
-                        <AnimatedBeam
-                            duration={durationAnimation}
-                            trigger={uploadingResult}
-                            pathColor="black"
-                            startXOffset={60}
-                            endXOffset={-50}
-                            bind:containerRef
-                            bind:fromRef={uploadingRef}
-                            bind:toRef={resultUploudingRef}
-                            gradientStartColor="#2b7cff"
-                            gradientStopColor="#00e5ff"
-                            pathWidth={4}
-                            onAnimationComplete={()=> labelUploudingResult()}
-                        />
+                            {#if interval.isActive}
+                                <Square class="w-4 h-4 mr-2" />
+                                Stop
+                            {:else}
+                                <Play class="w-4 h-4 mr-2" />
+                                Start
+                            {/if}
+                        </Button>
                     </div>
                 </div>
-            </CardContent>
-        </CardRoot>
+            </Card.Header>
 
-        <CardRoot>
-            <CardHeader>
-                <CardTitle>📋 Catatan & Dokumentasi</CardTitle>
-                <CardDescription>
-                    Referensi komprehensif untuk menggunakan, mengoperasikan,
-                    dan mengembangkan Halaman Layanan Cetak Otomatis.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div class="space-y-6 text-sm text-gray-700">
-                    <!-- OVERVIEW -->
-                    <section class="space-y-2">
-                        <h3
-                            class="font-semibold text-base text-gray-900 border-b pb-1"
-                        >
-                            📌 Ikhtisar
-                        </h3>
-                        <p>
-                            <strong>Halaman Cetak Otomatis</strong> berfungsi sebagai
-                            panel kontrol utama untuk sistem pencetakan label otomatis.
-                            Halaman ini menghubungkan browser (Klien Web) ke modul
-                            cetak Python lokal melalui mekanisme polling terjadwal.
-                            Pada setiap siklus, sistem mengambil data dari server
-                            untuk pekerjaan cetak yang tertunda dan, jika ditemukan,
-                            mengarahkannya melalui pipeline render/unggah sebelum
-                            mengirim ke printer fisik.
+            <Card.Content class="space-y-6">
+                <!-- Interval Setting -->
+                <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+                    <div class="flex-1 max-w-xs space-y-2">
+                        <Label for="interval">Polling Interval (ms)</Label>
+                        <Input
+                            id="interval"
+                            type="number"
+                            bind:value={intervalMs}
+                            min={MIN_INTERVAL}
+                            step={1000}
+                            disabled={interval.isActive}
+                        />
+                        <p class="text-sm text-muted-foreground">
+                            Minimum {MIN_INTERVAL}ms recommended. Current: {interval.counter} cycles.
                         </p>
-                        <p>
-                            Diagram alur kerja visual (kotak + berkas animasi)
-                            mencerminkan secara tepat apa yang terjadi di balik
-                            layar pada setiap tahap proses cetak. Gunakan
-                            diagram ini untuk memahami dengan cepat di mana
-                            posisi pekerjaan dalam pipeline saat ini.
-                        </p>
-                    </section>
+                    </div>
 
-                    <!-- WORKFLOW STAGES -->
-                    <section class="space-y-2">
-                        <h3
-                            class="font-semibold text-base text-gray-900 border-b pb-1"
-                        >
-                            🔄 Penjelasan Tahapan Alur Kerja
-                        </h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-xs border-collapse">
-                                <thead>
-                                    <tr class="bg-pink-100 text-left">
-                                        <th
-                                            class="px-3 py-2 border border-pink-200 font-semibold w-32"
-                                            >Tahap</th
-                                        >
-                                        <th
-                                            class="px-3 py-2 border border-pink-200 font-semibold"
-                                            >Fungsi</th
-                                        >
-                                        <th
-                                            class="px-3 py-2 border border-pink-200 font-semibold w-40"
-                                            >Variabel status utama</th
-                                        >
-                                    </tr>
-                                </thead>
-                                <tbody
-                                    class="[&>tr:nth-child(even)]:bg-gray-50"
-                                >
-                                    <tr>
-                                        <td
-                                            class="px-3 py-2 border border-pink-100 font-medium"
-                                            >Klien Web</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            >Titik masuk. Digerakkan oleh
-                                            interval penjadwal atau pemanggilan
-                                            manual <code>webTask()</code>.
-                                            Menetapkan
-                                            <code>taskIsRunning = true</code> untuk
-                                            mencegah tumpang tindih proses.</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            ><code>startTask</code></td
-                                        >
-                                    </tr>
-                                    <tr>
-                                        <td
-                                            class="px-3 py-2 border border-pink-100 font-medium"
-                                            >Penjadwal</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            >Menentukan langkah selanjutnya:
-                                            jika <code>databaseData</code> kosong,
-                                            pemindai DB baru dipicu; jika tidak, langsung
-                                            diarahkan ke pipeline pencetakan.</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            ><code
-                                                >startScanDb / startPrinting</code
-                                            ></td
-                                        >
-                                    </tr>
-                                    <tr>
-                                        <td
-                                            class="px-3 py-2 border border-pink-100 font-medium"
-                                            >Pengambilan Data</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            >Memanggil <code
-                                                >fetchingDataFunction()</code
-                                            > yang mengirim permintaan GET ke endpoint
-                                            API cetak-otomatis dan menunggu array
-                                            JSON objek pekerjaan.</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            ><code>startedFetching</code></td
-                                        >
-                                    </tr>
-                                    <tr>
-                                        <td
-                                            class="px-3 py-2 border border-pink-100 font-medium"
-                                            >Basis Data</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            >Mewakili penyimpanan staging.
-                                            Setelah pengambilan berhasil, <code
-                                                >databaseData</code
-                                            >
-                                            diisi dan <code>arrayCount</code> diperbarui.</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            ><code>databaseData</code></td
-                                        >
-                                    </tr>
-                                    <tr>
-                                        <td
-                                            class="px-3 py-2 border border-pink-100 font-medium"
-                                            >Array</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            >Penghitung visual yang menunjukkan
-                                            jumlah pekerjaan dalam antrian.
-                                            Angka yang ditampilkan di antara
-                                            tanda chevron mencerminkan nilai <code
-                                                >arrayCount</code
-                                            >.</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            ><code>arrayCount</code></td
-                                        >
-                                    </tr>
-                                    <tr>
-                                        <td
-                                            class="px-3 py-2 border border-pink-100 font-medium"
-                                            >Daftar Data</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            >Daftar pekerjaan yang telah
-                                            diselesaikan diteruskan ke tahap
-                                            render. Mewakili struktur data
-                                            perantara sebelum pembuatan
-                                            PDF/label dimulai.</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            ><code>startPrinting</code></td
-                                        >
-                                    </tr>
-                                    <tr>
-                                        <td
-                                            class="px-3 py-2 border border-pink-100 font-medium"
-                                            >Pembuatan / Render</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            >Setiap pekerjaan dirender ke format
-                                            cetak (PDF atau label HTML). Di
-                                            sinilah rendering Inertia/SSR atau
-                                            pembuatan PDF sisi server
-                                            berlangsung.</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            >—</td
-                                        >
-                                    </tr>
-                                    <tr>
-                                        <td
-                                            class="px-3 py-2 border border-pink-100 font-medium"
-                                            >Pengunggahan</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            >Mengirim file yang telah dirender
-                                            ke layanan cetak Python lokal
-                                            (berbasis SumatraPDF) atau
-                                            menyiapkannya untuk pencetakan
-                                            langsung. Kesalahan jaringan di sini
-                                            biasanya berarti layanan cetak tidak
-                                            berjalan.</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            >—</td
-                                        >
-                                    </tr>
-                                    <tr>
-                                        <td
-                                            class="px-3 py-2 border border-pink-100 font-medium"
-                                            >Hasil</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            >Status akhir proses. Saat berhasil, <code
-                                                >taskIsRunning</code
-                                            >
-                                            direset ke <code>false</code> sehingga
-                                            siklus interval berikutnya dapat memulai
-                                            proses baru.</td
-                                        >
-                                        <td
-                                            class="px-3 py-2 border border-pink-100"
-                                            ><code>taskIsRunning</code></td
-                                        >
-                                    </tr>
-                                </tbody>
-                            </table>
+                    {#if interval.isActive}
+                        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 class="w-4 h-4 animate-spin" />
+                            <span>Running • Next check in {Math.max(intervalMs, MIN_INTERVAL) / 1000}s</span>
                         </div>
-                    </section>
-
-                    <!-- CONTROLS -->
-                    <section class="space-y-2">
-                        <h3
-                            class="font-semibold text-base text-gray-900 border-b pb-1"
-                        >
-                            🎛️ Referensi Kontrol
-                        </h3>
-                        <ul class="list-disc ps-5 space-y-2">
-                            <li>
-                                <strong>Tombol Mulai / Berhenti</strong> —
-                                mengaktifkan atau menonaktifkan penjadwal
-                                <code>useInterval</code>. Saat aktif,
-                                <code>webTask()</code>
-                                dipanggil secara otomatis setiap
-                                <em>interval</em>
-                                milidetik. Menjeda tidak membatalkan proses yang sedang
-                                berjalan.
-                            </li>
-                            <li>
-                                <strong>Input Interval</strong> — mengatur frekuensi
-                                polling dalam milidetik. Penghitung proses saat ini
-                                ditampilkan di samping kolom. Perubahan nilai berlaku
-                                pada siklus berikutnya (tidak perlu memulai ulang).
-                            </li>
-                            <li>
-                                <strong>Dropdown Printer yang Digunakan</strong>
-                                — memilih printer OS mana yang akan menerima
-                                pekerjaan. Daftar diisi dari modul cetak lokal
-                                saat halaman dimuat. Klik
-                                <strong>Segarkan Status</strong> jika daftar kosong
-                                atau usang.
-                            </li>
-                            <li>
-                                <strong>Tombol Segarkan Status</strong> —
-                                menginisialisasi ulang modul cetak dan mengambil
-                                ulang daftar printer. Gunakan ini jika status
-                                klien menunjukkan
-                                <em>Belum diinisialisasi</em> atau printer yang dipilih
-                                menghilang.
-                            </li>
-                        </ul>
-                    </section>
-
-                    <!-- RECOMMENDED SETTINGS -->
-                    <section class="space-y-2">
-                        <h3
-                            class="font-semibold text-base text-gray-900 border-b pb-1"
-                        >
-                            ⚙️ Pengaturan yang Direkomendasikan
-                        </h3>
-                        <ul class="list-disc ps-5 space-y-2">
-                            <li>
-                                <strong>Pengembangan / pengujian:</strong>
-                                interval = <code>5000 md</code> (5 dtk). Memberikan
-                                umpan balik cepat tanpa membebani server.
-                            </li>
-                            <li>
-                                <strong>Produksi (volume rendah):</strong>
-                                interval = <code>15 000 – 30 000 md</code> (15–30
-                                dtk).
-                            </li>
-                            <li>
-                                <strong>Produksi (volume tinggi):</strong>
-                                interval = <code>5 000 – 10 000 md</code> dengan pembatasan
-                                laju sisi server pada API.
-                            </li>
-                            <li>
-                                Jangan pernah mengatur interval di bawah <code
-                                    >2 000 md</code
-                                > — durasi animasi adalah 2 dtk dan proses baru dapat
-                                dimulai sebelum proses sebelumnya selesai secara visual.
-                            </li>
-                            <li>
-                                Pertahankan tab browser terlihat saat debugging;
-                                pembatasan latar belakang di Chrome/Edge dapat
-                                menunda siklus interval secara signifikan.
-                            </li>
-                        </ul>
-                    </section>
-
-                    <!-- TROUBLESHOOTING -->
-                    <section class="space-y-2">
-                        <h3
-                            class="font-semibold text-base text-gray-900 border-b pb-1"
-                        >
-                            🛠️ Pemecahan Masalah
-                        </h3>
-                        <ul class="list-disc ps-5 space-y-3">
-                            <li>
-                                <strong
-                                    >Klien menunjukkan "Belum diinisialisasi"
-                                    atau tidak ada printer terdaftar</strong
-                                ><br />
-                                Layanan cetak Python lokal (<code
-                                    >server.py</code
-                                >) kemungkinan tidak berjalan. Mulai dengan
-                                <code>python server.py</code>
-                                (atau jalankan file <code>.exe</code> yang telah
-                                dikompilasi), kemudian klik
-                                <strong>Segarkan Status</strong>.
-                            </li>
-                            <li>
-                                <strong
-                                    >Pengambilan data mengembalikan array kosong
-                                    padahal pekerjaan ada di DB</strong
-                                ><br />
-                                Periksa bahwa rute <code>listAuto</code> mengembalikan
-                                data yang benar dan bahwa sesi autentikasi masih valid.
-                                Buka DevTools → Network dan periksa respons dari panggilan
-                                API cetak-otomatis.
-                            </li>
-                            <li>
-                                <strong
-                                    >Berkas animasi bergerak tetapi tidak ada
-                                    yang tercetak</strong
-                                ><br />
-                                Tahap render/unggah selesai tetapi printer menolak
-                                pekerjaan. Verifikasi bahwa nama printer yang dipilih
-                                cocok dengan printer tingkat OS secara tepat (peka
-                                huruf besar/kecil pada beberapa sistem). Periksa juga
-                                log SumatraPDF di <code>tmp/print_jobs/</code>.
-                            </li>
-                            <li>
-                                <strong
-                                    >Beberapa proses tumpang tindih / penghitung
-                                    terus bertambah</strong
-                                ><br />
-                                Ini terjadi jika <code>taskIsRunning</code>
-                                tidak pernah direset ke <code>false</code>
-                                (misalnya kesalahan terjadi sebelum
-                                <code>onAnimationComplete</code> akhir dipicu). Segarkan
-                                halaman untuk mereset status, atau tambahkan blok
-                                try/catch di dalam callback penyelesaian berkas.
-                            </li>
-                            <li>
-                                <strong>Berkas animasi tidak terlihat</strong
-                                ><br />
-                                Berkas memerlukan kontainer yang terpasang (<code
-                                    >containerRef</code
-                                >) dan kedua
-                                <code>fromRef</code> / <code>toRef</code> tidak
-                                boleh null saat animasi dimulai. Jika elemen
-                                tersembunyi atau dirender secara kondisional,
-                                mereka mungkin tidak terikat tepat waktu.
-                                Periksa konsol browser untuk peringatan
-                                <em>"ref is null"</em>
-                                dari
-                                <code>AnimatedBeam.svelte</code>.
-                            </li>
-                        </ul>
-                    </section>
-
-                    <!-- DEVELOPER NOTES -->
-                    <section class="space-y-2">
-                        <h3
-                            class="font-semibold text-base text-gray-900 border-b pb-1"
-                        >
-                            👨‍💻 Catatan Pengembang
-                        </h3>
-                        <ul class="list-disc ps-5 space-y-2">
-                            <li>
-                                <strong>Kontrak API</strong> —
-                                <code>fetchingDataFunction()</code>
-                                mengharapkan server mengembalikan
-                                <code>application/json</code>
-                                dengan array tingkat atas. Setiap elemen harus
-                                mencakup minimal <code>id</code> dan bidang yang diperlukan
-                                oleh renderer label. Sesuaikan fungsi ini jika skema
-                                Anda berbeda.
-                            </li>
-                            <li>
-                                <strong
-                                    >Mengekstrak alur kerja ke komponen anak</strong
-                                >
-                                — jika Anda memindahkan diagram berkas ke
-                                <code>DataFetcher.svelte</code>, ekspor
-                                <code>webTask()</code> dan gunakan
-                                <code>bind:this</code>
-                                di halaman ini untuk memanggilnya dari callback
-                                interval, contoh:
-                                <code
-                                    >callback: () =&gt;
-                                    dataFetcherRef?.webTask?.()</code
-                                >.
-                            </li>
-                            <li>
-                                <strong>Durasi animasi vs interval</strong> —
-                                <code>durationAnimation</code>
-                                saat ini di-hardcode ke <code>2</code> dtk. Jika
-                                Anda menurunkan interval di bawah ~4 dtk,
-                                pertimbangkan untuk menurunkan durasi dari
-                                interval (<code
-                                    >Math.min(intervalSetting / 1000 * 0.3, 5)</code
-                                >) sehingga berkas selalu selesai sebelum proses
-                                berikutnya dimulai.
-                            </li>
-                            <li>
-                                <strong>Reset status saat kesalahan</strong> —
-                                tambahkan blok <code>try/finally</code>
-                                di dalam <code>webTask()</code> yang menetapkan
-                                <code>taskIsRunning = false</code>
-                                tanpa syarat sehingga proses yang gagal tidak pernah
-                                mengunci penjadwal.
-                            </li>
-                            <li>
-                                <strong>Tipe TypeScript</strong> —
-                                <code>databaseData</code>
-                                diberi tipe
-                                <code>any[]</code>. Ganti dengan antarmuka yang
-                                tepat setelah skema API selesai untuk
-                                mendapatkan keamanan tipe penuh di seluruh alur
-                                kerja.
-                            </li>
-                            <li>
-                                <strong>Seluler</strong> — berkas animasi
-                                disembunyikan pada viewport lebih kecil dari
-                                <code>sm</code> (640 px). Alur kerja tetap berjalan;
-                                hanya visual yang ditiadakan. Bungkus berkas dalam
-                                blok Svelte yang sadar media-query jika Anda memerlukan
-                                visibilitas seluler.
-                            </li>
-                        </ul>
-                    </section>
+                    {/if}
                 </div>
-            </CardContent>
-        </CardRoot>
 
-        <CardRoot>
-            <CardHeader>
-                <CardTitle class="text-center mt-4 text-xl font-bold"
-                    >Render Label</CardTitle
-                >
-                <CardDescription class="text-center mb-4">
-                    Rendering view for Label Print (to be implemented)
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div class="w-full h-full">
-                    <AutoRender bind:data={dataBind} bind:ref={labelContainer} />
+                <Separator />
+
+                <!-- Visual Workflow -->
+                <div class="relative overflow-x-auto pb-4">
+                    <div
+                        bind:this={containerRef}
+                        class="relative mx-auto bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-xl border shadow-inner"
+                        style="width: 780px; height: 430px;"
+                    >
+                        <!-- Row labels -->
+                        <div class="absolute left-2 top-12.5 text-[10px] text-muted-foreground font-mono">①</div>
+                        <div class="absolute left-2 top-45   text-[10px] text-muted-foreground font-mono">②</div>
+                        <div class="absolute left-2 top-77.5 text-[10px] text-muted-foreground font-mono">③</div>
+
+                        <!-- Workflow Nodes -->
+                        {#each WORKFLOW_NODES as node}
+                            <WorkflowNode
+                                {node}
+                                status={getNodeStatus(node.id)}
+                                setRef={(el) => setNodeRef(node.id, el)}
+                            />
+                        {/each}
+
+                        <!-- Animated Beams -->
+                        {#if containerRef}
+                            <!-- ── Row 1 ──────────────────────────────────────────────────── -->
+                            <!-- client → scheduler       fires: scheduling -->
+                            <AnimatedBeam duration={DURATION_ANIMATION}
+                                trigger={$snapshot.value === 'scheduling'}
+                                containerRef={containerRef}
+                                fromRef={nodeRefs['client']} toRef={nodeRefs['scheduler']} />
+                            <!-- scheduler → fetching      fires: fetching -->
+                            <AnimatedBeam duration={DURATION_ANIMATION}
+                                trigger={$snapshot.value === 'fetching'}
+                                containerRef={containerRef}
+                                fromRef={nodeRefs['scheduler']} toRef={nodeRefs['fetching']} />
+                            <!-- fetching → parsing        fires: parsing -->
+                            <AnimatedBeam duration={DURATION_ANIMATION}
+                                trigger={$snapshot.value === 'parsing'}
+                                containerRef={containerRef}
+                                fromRef={nodeRefs['fetching']} toRef={nodeRefs['parsing']} />
+                            <!-- parsing → array_show      fires: array_show -->
+                            <AnimatedBeam duration={DURATION_ANIMATION}
+                                trigger={$snapshot.value === 'array_show'}
+                                containerRef={containerRef}
+                                fromRef={nodeRefs['parsing']} toRef={nodeRefs['array_show']} />
+
+                            <!-- ── Row 1 → Row 2 bridge ──────────────────────────────────── -->
+                            <!-- array_show ↙ datalist     fires: datalist  (long diagonal, curve up) -->
+                            <AnimatedBeam duration={DURATION_ANIMATION}
+                                trigger={$snapshot.value === 'datalist'}
+                                containerRef={containerRef}
+                                fromRef={nodeRefs['array_show']} toRef={nodeRefs['datalist']}
+                                curvature={-120} />
+
+                            <!-- ── Row 2 ──────────────────────────────────────────────────── -->
+                            <!-- datalist → rendering      fires: rendering -->
+                            <AnimatedBeam duration={DURATION_ANIMATION}
+                                trigger={$snapshot.value === 'rendering'}
+                                containerRef={containerRef}
+                                fromRef={nodeRefs['datalist']} toRef={nodeRefs['rendering']} />
+                            <!-- rendering → generating    fires: generating -->
+                            <AnimatedBeam duration={DURATION_ANIMATION}
+                                trigger={$snapshot.value === 'generating'}
+                                containerRef={containerRef}
+                                fromRef={nodeRefs['rendering']} toRef={nodeRefs['generating']} />
+                            <!-- generating → printing     fires: printing -->
+                            <AnimatedBeam duration={DURATION_ANIMATION}
+                                trigger={$snapshot.value === 'printing'}
+                                containerRef={containerRef}
+                                fromRef={nodeRefs['generating']} toRef={nodeRefs['printing']} />
+                            <!-- printing → print_ok       fires: print_ok -->
+                            <AnimatedBeam duration={DURATION_ANIMATION}
+                                trigger={$snapshot.value === 'print_ok'}
+                                containerRef={containerRef}
+                                fromRef={nodeRefs['printing']} toRef={nodeRefs['print_ok']} />
+
+                            <!-- ── Row 2 → Row 3 bridge ──────────────────────────────────── -->
+                            <!-- print_ok ↙ uploading      fires: uploading  (diagonal, curve down) -->
+                            <AnimatedBeam duration={DURATION_ANIMATION}
+                                trigger={$snapshot.value === 'uploading'}
+                                containerRef={containerRef}
+                                fromRef={nodeRefs['print_ok']} toRef={nodeRefs['uploading']}
+                                curvature={120} />
+
+                            <!-- ── Row 3 ──────────────────────────────────────────────────── -->
+                            <!-- uploading → upload_ok     fires: upload_ok -->
+                            <AnimatedBeam duration={DURATION_ANIMATION}
+                                trigger={$snapshot.value === 'upload_ok'}
+                                containerRef={containerRef}
+                                fromRef={nodeRefs['uploading']} toRef={nodeRefs['upload_ok']} />
+                        {/if}
+
+                        <!-- Phase Indicator -->
+                        <div class="absolute top-3 right-3">
+                            <Badge variant="outline" class="text-xs font-mono">
+                                {$snapshot.value}
+                            </Badge>
+                        </div>
+                    </div>
                 </div>
-            </CardContent>
-        </CardRoot>
+            </Card.Content>
+        </Card.Root>
+
+        <!-- Documentation -->
+        <Card.Root>
+            <Card.Header>
+                <Card.Title>Documentation</Card.Title>
+                <Card.Description>
+                    XState-powered workflow reference
+                </Card.Description>
+            </Card.Header>
+            <Card.Content class="space-y-6">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                        <tr class="border-b">
+                            <th class="text-left py-2 font-semibold">Phase</th>
+                            <th class="text-left py-2 font-semibold">Description</th>
+                            <th class="text-left py-2 font-semibold w-32">Trigger</th>
+                        </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                        {#each workflowStages as stage}
+                            <tr class="hover:bg-muted/50">
+                                <td class="py-3 font-medium">{stage.phase}</td>
+                                <td class="py-3 text-muted-foreground">{stage.desc}</td>
+                                <td class="py-3"><code class="text-xs bg-muted px-1 py-0.5 rounded">{stage.trigger}</code></td>
+                            </tr>
+                        {/each}
+                        </tbody>
+                    </table>
+                </div>
+
+                <Separator />
+
+                <div class="space-y-3">
+                    <h3 class="font-semibold flex items-center gap-2">
+                        <AlertCircle class="w-4 h-4" />
+                        Troubleshooting
+                    </h3>
+                    <div class="grid gap-3 md:grid-cols-2">
+                        {#each troubleshooting as item}
+                            <div class="bg-muted/50 p-3 rounded-lg text-sm">
+                                <p class="font-medium mb-1">{item.problem}</p>
+                                <p class="text-muted-foreground">{item.solution}</p>
+                            </div>
+                        {/each}
+                    </div>
+                </div>
+            </Card.Content>
+        </Card.Root>
+
+        <!-- Label Render -->
+        <Card.Root>
+            <Card.Header>
+                <Card.Title>Label Preview</Card.Title>
+                <Card.Description>
+                    Rendered labels ready for print
+                    {#if $snapshot.context.queueData.length}
+                        <Badge variant="secondary" class="ml-2">{$snapshot.context.queueData.length} items</Badge>
+                    {/if}
+                </Card.Description>
+            </Card.Header>
+            <Card.Content>
+                <div bind:this={labelContainerRef} class="min-h-50 border rounded-lg p-4 bg-muted/30">
+                    <!--{#if $snapshot.context.renderedData.length}-->
+<!--                        <AutoRender data={$snapshot.context.renderedData} />-->
+                        <AutoRender data={[{"id":3,"rack_code":"ST-A004","area_name":"Normal","label_type":"besar","quantity":3,"printed":0,"urgent":0,"auto_print":1,"requested_by":"Jumiati","created_at":"2026-02-12T06:25:16.000000Z","updated_at":"2026-02-23T01:30:41.000000Z","rack_list":{"id":4825,"rack_no":"ST-A004","item_code":"18133012101B","part_name":"GEAR\/07X33                     SET","cek":"BENAR","supplier":"ISEKI CO. LTD","part_hydrolis":0,"type_tractor":"MF1E MEKA\/TLE3410 MEKA\/MF1E41\/NT540\/NT536\/NT542\/MF1640","satuan":"PCS","sample":null,"created_at":"2026-02-12T04:30:06.000000Z","updated_at":"2026-02-12T04:30:06.000000Z"}},{"id":5,"rack_code":"MT-A058","area_name":"Normal","label_type":"kecil","quantity":1,"printed":0,"urgent":0,"auto_print":1,"requested_by":"Koko hendrik","created_at":"2026-02-13T08:20:14.000000Z","updated_at":"2026-02-23T01:25:16.000000Z","rack_list":{"id":1536,"rack_no":"MT-A058","item_code":"18315082100A","part_name":"PIPE\/SUC                       COMP","cek":"BENAR","supplier":"Modest Corporation","part_hydrolis":1,"type_tractor":"MF2E MEKA ALL","satuan":"PCS","sample":null,"created_at":"2026-02-12T04:29:50.000000Z","updated_at":"2026-02-12T04:29:50.000000Z"}},{"id":6,"rack_code":"MT-A058","area_name":"Normal","label_type":"besar","quantity":1,"printed":0,"urgent":0,"auto_print":1,"requested_by":"Koko hendrik","created_at":"2026-02-13T08:20:30.000000Z","updated_at":"2026-02-23T01:56:21.000000Z","rack_list":{"id":1536,"rack_no":"MT-A058","item_code":"18315082100A","part_name":"PIPE\/SUC                       COMP","cek":"BENAR","supplier":"Modest Corporation","part_hydrolis":1,"type_tractor":"MF2E MEKA ALL","satuan":"PCS","sample":null,"created_at":"2026-02-12T04:29:50.000000Z","updated_at":"2026-02-12T04:29:50.000000Z"}},{"id":8,"rack_code":"PL-P004","area_name":"Normal","label_type":"pallet","quantity":1,"printed":0,"urgent":0,"auto_print":1,"requested_by":"Koko hendrik","created_at":"2026-02-13T08:28:06.000000Z","updated_at":"2026-02-20T09:23:58.000000Z","rack_list":{"id":3190,"rack_no":"PL-P004","item_code":"18056312402D","part_name":"BRACKET\/STEP\/RH                COMP","cek":"BENAR","supplier":"ISEKI CO. LTD","part_hydrolis":0,"type_tractor":"MF1E MEKA","satuan":"PCS","sample":"Non Timbangan","created_at":"2026-02-12T04:29:58.000000Z","updated_at":"2026-02-12T04:29:58.000000Z"}},{"id":9,"rack_code":"ST-A032","area_name":"Normal","label_type":"besar","quantity":1,"printed":0,"urgent":0,"auto_print":1,"requested_by":"Koko hendrik","created_at":"2026-02-13T08:34:34.000000Z","updated_at":"2026-02-20T09:19:55.000000Z","rack_list":{"id":4853,"rack_no":"ST-A032","item_code":"19992160260A","part_name":"GEAR\/SPUR\/27\/E4","cek":"BENAR","supplier":"SEIL Industrial CO.,LTD","part_hydrolis":0,"type_tractor":"TLE3410 HST ALL","satuan":"PCS","sample":null,"created_at":"2026-02-12T04:30:06.000000Z","updated_at":"2026-02-12T04:30:06.000000Z"}},{"id":10,"rack_code":"LO-D010","area_name":"Normal","label_type":"besar","quantity":1,"printed":0,"urgent":0,"auto_print":1,"requested_by":"Koko hendrik","created_at":"2026-02-13T08:35:07.000000Z","updated_at":"2026-02-20T09:00:58.000000Z","rack_list":{"id":1026,"rack_no":"LO-D010","item_code":"J9325000010","part_name":"PIN\/COTTER\/1.6X15","cek":"BENAR","supplier":"PT Yahata Industri Indonesia","part_hydrolis":0,"type_tractor":"TLE3410 ALL\/MF1741\/MF1E ALL\/NT554\/NT548\/MF1650\/TLE4550\/MF1756\/MF2E ALL\/NT540\/NT536\/NT542\/MF1640","satuan":"PCS","sample":"SK:200","created_at":"2026-02-12T04:29:48.000000Z","updated_at":"2026-02-12T04:29:48.000000Z"}},{"id":11,"rack_code":"PA-A004","area_name":"Normal","label_type":"besar","quantity":2,"printed":0,"urgent":0,"auto_print":1,"requested_by":"Koko hendrik","created_at":"2026-02-13T08:43:55.000000Z","updated_at":"2026-02-20T09:00:58.000000Z","rack_list":{"id":1920,"rack_no":"PA-A004","item_code":"18216112201B","part_name":"BRACKET\/SEAT                   COMP","cek":"BENAR","supplier":"PT. Yahata Manufacturing Ind.","part_hydrolis":0,"type_tractor":"MF1E35 ALL\/MF1E40 ALL\/MF1E25 ALL\/MF2E60 ALL\/MF2E50 ALL","satuan":"PCS","sample":null,"created_at":"2026-02-12T04:29:52.000000Z","updated_at":"2026-02-12T04:29:52.000000Z"}}]} />
+                    <!--{:else}-->
+                    <!--    <div class="flex flex-col items-center justify-center h-32 text-muted-foreground">-->
+                    <!--        <PrinterCheck class="w-8 h-8 mb-2 opacity-50" />-->
+                    <!--        <p>No labels to render</p>-->
+                    <!--        <p class="text-sm">Start the service to fetch and render labels</p>-->
+                    <!--    </div>-->
+                    <!--{/if}-->
+                </div>
+            </Card.Content>
+        </Card.Root>
     </div>
 </Navbar>

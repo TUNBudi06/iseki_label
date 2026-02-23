@@ -30,7 +30,7 @@
                 class="w-[31mm] h-full content-center text-center justify-center-safe border-r border-black"
             >
                 <span class="font-bold text-xs"
-                    ><AutoFitText minPx={1} text={name} /></span
+                    ><AutoFitText minPx={1} maxPx={12} text={name} /></span
                 >
             </div>
         </div>

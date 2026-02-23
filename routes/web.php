@@ -3,6 +3,7 @@
 use App\Http\Controllers\AboutController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PrintHistoryController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -24,6 +25,16 @@ Route::prefix('home')->group(function () {
 
 Route::prefix('user')->group(function () {
     Route::get('/login', [\App\Http\Controllers\AuthController::class, 'authUser'])->name('user.login');
+    Route::post('/login', [\App\Http\Controllers\AuthController::class, 'authUserPost'])->name('user.loginpost');
+    Route::get('/logout', [\App\Http\Controllers\AuthController::class, 'logoutUser'])->name('user.logout');
+
+    // User management (admin only)
+    Route::prefix('list')->group(function () {
+        Route::get('/', [UserController::class, 'index'])->name('user.manage');
+        Route::post('/store', [UserController::class, 'store'])->name('user.userStore');
+        Route::put('/update', [UserController::class, 'update'])->name('user.userUpdate');
+        Route::post('/delete', [UserController::class, 'destroy'])->name('user.userDestroy');
+    });
 });
 
 Route::get('multi-page',function(){

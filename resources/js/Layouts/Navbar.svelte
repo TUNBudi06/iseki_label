@@ -3,18 +3,23 @@
     import { Link } from '@inertiajs/svelte';
     import { home, about } from '$routes';
     import DefaultLayout from '$/Layouts/DefaultLayout.svelte';
-    import {login} from "$routes/user/index.ts";
+    import {login, logout, manage} from "$routes/user/index.ts";
+    import { page } from '@inertiajs/svelte';
+    import { Tag, Home, LogIn, User, Info, LogOut } from '@lucide/svelte';
 
-    let { children = null,user } = $props();
+    let { children = null } = $props();
 </script>
 
-{#snippet NavMenu(href, label)}
+{#snippet NavMenu(href, label, Icon)}
     <Link
         {href}
-        class="rounded-lg px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-100 dark:text-white data-[active=true]:bg-pink-400 dark:hover:bg-slate-800"
+        class="rounded-lg px-4 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-100 dark:text-white data-[active=true]:bg-pink-400 dark:hover:bg-slate-800 flex items-center gap-2"
         data-active={isCurrentRoute(href, true, false)}
     >
-        {label}
+        {#if Icon}
+            <Icon class="size-4 opacity-80" aria-hidden="true" title={label} />
+        {/if}
+        <span>{label}</span>
     </Link>
 {/snippet}
 
@@ -28,25 +33,26 @@
                 <div class="flex h-16 items-center justify-between">
                     <div>
                         <h1
-                            class="text-xl font-bold tracking-tighter text-slate-900 dark:text-white"
+                            class="text-xl font-bold tracking-tighter text-slate-900 dark:text-white flex items-center gap-2"
                         >
-                            ISEKI LABEL
+                            <Tag class="w-6 h-6 text-pink-600" />
+                            <span>ISEKI LABEL</span>
                         </h1>
                     </div>
 
-                    {#if !user}
+                    {#if !$page.props.user}
                     <div class="flex gap-4">
-                        {@render NavMenu(routeUrl(home()), 'Home')}
-                            {@render NavMenu(routeUrl(login()), 'Login')}
-                        <!--{@render NavMenu(routeUrl(about()), 'About')}-->
+                        {@render NavMenu(routeUrl(home()), 'Home', Home)}
+                        {@render NavMenu(routeUrl(login()), 'Login', LogIn)}
                     </div>
                     {:else}
                         <div class="flex gap-4">
-                            {@render NavMenu(routeUrl(home()), 'Home')}
-                            <!--{@render NavMenu(routeUrl(about()), 'About')}-->
+                            {@render NavMenu(routeUrl(manage()), 'User', User)}
+                            {@render NavMenu(routeUrl(home()), 'Home', Home)}
+                            {@render NavMenu(routeUrl(about()), 'About', Info)}
                         </div>
                         <div class="flex gap-4">
-                            <!--{@render NavMenu(routeUrl(login()), 'Logout')}-->
+                            {@render NavMenu(routeUrl(logout()), 'Logout', LogOut)}
                         </div>
                     {/if}
                 </div>

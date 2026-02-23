@@ -3,10 +3,18 @@
     import { Link } from '@inertiajs/svelte';
     import { home, about } from '$routes';
     import DefaultLayout from '$/Layouts/DefaultLayout.svelte';
-    import {login, logout, manage} from "$routes/user/index.ts";
+    import { login, logout, manage } from '$routes/user/index.ts';
     import { page } from '@inertiajs/svelte';
-    import {Tag, Home, LogIn, User, Info, LogOut, SquareLibrary} from '@lucide/svelte';
-    import {rackIndex} from "$routes/rack/index.ts";
+    import {
+        Tag,
+        Home,
+        LogIn,
+        User,
+        Info,
+        LogOut,
+        SquareLibrary,
+    } from '@lucide/svelte';
+    import { rackIndex } from '$routes/rack/index.ts';
 
     let { children = null } = $props();
 </script>
@@ -42,18 +50,26 @@
                     </div>
 
                     {#if !$page.props.user}
-                    <div class="flex gap-4">
-                        {@render NavMenu(routeUrl(home()), 'Home', Home)}
-                        {@render NavMenu(routeUrl(login()), 'Login', LogIn)}
-                    </div>
+                        <div class="flex gap-4">
+                            {@render NavMenu(routeUrl(home()), 'Home', Home)}
+                            {@render NavMenu(routeUrl(login()), 'Login', LogIn)}
+                        </div>
                     {:else}
                         <div class="flex gap-4">
                             {@render NavMenu(routeUrl(manage()), 'User', User)}
                             {@render NavMenu(routeUrl(home()), 'Home', Home)}
-                            {@render NavMenu(routeUrl(rackIndex()), 'Rack List',SquareLibrary )}
+                            {@render NavMenu(
+                                routeUrl(rackIndex()),
+                                'Rack List',
+                                SquareLibrary,
+                            )}
                         </div>
                         <div class="flex gap-4">
-                            {@render NavMenu(routeUrl(logout()), 'Logout', LogOut)}
+                            {@render NavMenu(
+                                routeUrl(logout()),
+                                'Logout',
+                                LogOut,
+                            )}
                         </div>
                     {/if}
                 </div>

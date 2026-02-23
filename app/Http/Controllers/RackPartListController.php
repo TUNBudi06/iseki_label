@@ -39,6 +39,16 @@ class RackPartListController extends Controller
             'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
         ]);
 
+        // however there are more than two of rack no that will be insert by import so deleting first is needed
+        RackPartList::select('rack_no')
+            ->groupBy('rack_no')
+            ->havingRaw('COUNT(*) > 2')
+            ->pluck('rack_no')
+            ->each(function ($rackNo) {
+                RackPartList::where('rack_no', $rackNo)->delete();
+            });
+
+
         Excel::import(new RackPartListImport, $request->file('file'));
 
         return back()->with('success', 'Data berhasil diimport.');

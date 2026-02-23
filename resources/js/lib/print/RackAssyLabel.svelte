@@ -53,12 +53,18 @@
     >
         <div class="border-b border-black w-full">Remark</div>
         <div class="border-b-2 w-full font-sans font-normal tracking-tight">
-            <AutoFitText minPx={18} maxPx={25}  text={timbangan ?? ''} />
+            <AutoFitText minPx={18} maxPx={25} text={timbangan ?? ''} />
         </div>
         <div
             class="w-full text-sm font-normal font-sans row-span-2 tracking-tighter"
         >
-            <AutoFitText minPx={14} maxPx={20} fillSpace={true} balance={false} text={vendor} />
+            <AutoFitText
+                minPx={14}
+                maxPx={20}
+                fillSpace={true}
+                balance={false}
+                text={vendor}
+            />
         </div>
     </div>
     <div

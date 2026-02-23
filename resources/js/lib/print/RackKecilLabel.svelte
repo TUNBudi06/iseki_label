@@ -19,11 +19,7 @@
                 class="w-[31mm] h-full content-center text-center justify-center-safe border-r border-black"
             >
                 <span class="font-bold tracking-tighter"
-                    ><AutoFitText
-                        minPx={1}
-                        maxPx={12}
-                        text={codeParser}
-                    />
+                    ><AutoFitText minPx={1} maxPx={12} text={codeParser} />
                 </span>
             </div>
             <div

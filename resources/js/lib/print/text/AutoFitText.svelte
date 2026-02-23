@@ -7,7 +7,7 @@
         minPx = 8,
         balance = false,
         fillSpace = true,
-        class: className = ''
+        class: className = '',
     }: {
         text: string;
         maxPx?: number;
@@ -59,7 +59,7 @@
             safety < maxSafety &&
             size > minPx &&
             (el.scrollWidth > availWidth || el.scrollHeight > availHeight)
-            ) {
+        ) {
             size -= 0.5;
             el.style.fontSize = size + 'px';
             await tick();
@@ -83,7 +83,10 @@
                     el.style.fontSize = testSize + 'px';
                     await tick();
 
-                    if (el.scrollWidth > availWidth || el.scrollHeight > availHeight) {
+                    if (
+                        el.scrollWidth > availWidth ||
+                        el.scrollHeight > availHeight
+                    ) {
                         // Too big, revert
                         el.style.fontSize = size + 'px';
                         break;
@@ -113,7 +116,7 @@
 
     onMount(() => {
         // Initial fit with delays for font loading
-        [0, 50, 100, 200].forEach(d => setTimeout(() => tick().then(fit), d));
+        [0, 50, 100, 200].forEach((d) => setTimeout(() => tick().then(fit), d));
 
         // Watch parent resize
         const parent = el?.parentElement;
@@ -135,7 +138,7 @@
         'overflow-hidden',
         balance ? 'text-balance' : '',
         balance ? '' : 'leading-tight',
-        className
+        className,
     ].join(' ')}
     style="font-size:{maxPx}px; white-space: {balance ? 'normal' : 'nowrap'};"
 >

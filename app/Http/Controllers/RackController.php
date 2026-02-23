@@ -26,7 +26,7 @@ class RackController extends Controller
             $query->orderBy($sortBy, $sortDirection);
         }
 
-//        debugbar()->info($query->count(), 'Total records after filtering',$search);
+        //        debugbar()->info($query->count(), 'Total records after filtering',$search);
 
         return [
             'data' => $query->offset($offset)->limit($limit)->get(),

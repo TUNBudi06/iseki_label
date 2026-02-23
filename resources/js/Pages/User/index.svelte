@@ -1,5 +1,5 @@
 <script lang="ts">
-    import Navbar from "$/Layouts/Navbar.svelte";
+    import Navbar from '$/Layouts/Navbar.svelte';
     import { Button } from '$shadcn/components/ui/button';
     import * as Card from '$shadcn/components/ui/card/index.js';
     import * as Dialog from '$shadcn/components/ui/dialog/index.ts';
@@ -7,24 +7,29 @@
     import { Label } from '$shadcn/components/ui/label';
     import * as Field from '$shadcn/components/ui/field/index.js';
     import * as Select from '$shadcn/components/ui/select/index.js';
-    import {router, useForm} from '@inertiajs/svelte';
+    import { router, useForm } from '@inertiajs/svelte';
     import * as Table from '$shadcn/components/ui/table/index.js';
-    import { TableHandler, Pagination, RowCount, Datatable } from "@vincjo/datatables";
+    import {
+        TableHandler,
+        Pagination,
+        RowCount,
+        Datatable,
+    } from '@vincjo/datatables';
     import { Pencil, Trash2, UserPlus, Shield, User } from '@lucide/svelte';
-    import {onMount} from "svelte";
-    import {route, routeUrl} from "@tunbudi06/inertia-route-helper";
-    import {userDestroy, userStore, userUpdate} from "$routes/user";
-    import {toast} from "svelte-sonner";
-    let _ = Card
-    _ = Dialog
+    import { onMount } from 'svelte';
+    import { route, routeUrl } from '@tunbudi06/inertia-route-helper';
+    import { userDestroy, userStore, userUpdate } from '$routes/user';
+    import { toast } from 'svelte-sonner';
+    let _ = Card;
+    _ = Dialog;
     // @ts-ignore
-    _ = Table
+    _ = Table;
     // @ts-ignore
-    _ = Select
+    _ = Select;
     // @ts-ignore
-    _ = Field
+    _ = Field;
 
-    let {users} = $props();
+    let { users } = $props();
 
     type User = {
         id: number;
@@ -58,11 +63,11 @@
         highlight: true,
     });
 
-    onMount(()=>{
+    onMount(() => {
         table.setRows(users);
-    })
+    });
 
-    const globalSearch = table.createSearch(['username','name'])
+    const globalSearch = table.createSearch(['username', 'name']);
 
     // Reactive update when users change
     $effect(() => {
@@ -100,12 +105,12 @@
             onSuccess() {
                 toast.success('User created successfully!');
                 router.reload({
-                    only:['users']
+                    only: ['users'],
                 });
             },
             onError(errors) {
                 console.warn('Create user errors', errors);
-            }
+            },
         });
         closeDialog();
     }
@@ -116,12 +121,12 @@
             onSuccess() {
                 toast.success('User updated successfully!');
                 router.reload({
-                    only:['users']
+                    only: ['users'],
                 });
             },
             onError(errors) {
                 console.warn('Update user errors', errors);
-            }
+            },
         });
         closeDialog();
     }
@@ -135,23 +140,23 @@
         }
     }
 
-            const tmp = useForm({
-                id: 0,
-            });
+    const tmp = useForm({
+        id: 0,
+    });
     function confirmDelete(user: User) {
         if (confirm(`Delete user ${user.name} (${user.username})?`)) {
-            $tmp.id=user.id;
-            $tmp.post(routeUrl(userDestroy()),{
+            $tmp.id = user.id;
+            $tmp.post(routeUrl(userDestroy()), {
                 onSuccess() {
                     toast.success('User deleted successfully!');
                     router.reload({
-                        only:['users']
+                        only: ['users'],
                     });
                 },
                 onError(errors) {
                     console.warn('Delete user errors', errors);
-                }
-            })
+                },
+            });
         }
     }
 
@@ -167,7 +172,9 @@
         <!-- Header -->
         <div class="flex items-center justify-between">
             <div>
-                <h2 class="text-2xl font-semibold tracking-tight">User Management</h2>
+                <h2 class="text-2xl font-semibold tracking-tight">
+                    User Management
+                </h2>
                 <p class="text-sm text-muted-foreground mt-1">
                     Manage application users — add, edit, or remove accounts.
                 </p>
@@ -183,9 +190,14 @@
             <Card.Header>
                 <Field.Field>
                     <Field.Label>Search:</Field.Label>
-                    <Input type="text" placeholder="Search users..." bind:value={globalSearch.value} oninput={(e) => {
-                        globalSearch.set();
-                    }} />
+                    <Input
+                        type="text"
+                        placeholder="Search users..."
+                        bind:value={globalSearch.value}
+                        oninput={(e) => {
+                            globalSearch.set();
+                        }}
+                    />
                 </Field.Field>
             </Card.Header>
             <Card.Content class="p-0">
@@ -197,13 +209,17 @@
                                 <Table.Head>Name</Table.Head>
                                 <Table.Head>Username</Table.Head>
                                 <Table.Head class="w-32">Role</Table.Head>
-                                <Table.Head class="w-40 text-right">Actions</Table.Head>
+                                <Table.Head class="w-40 text-right"
+                                    >Actions</Table.Head
+                                >
                             </Table.Row>
                         </Table.Header>
                         <Table.Body>
                             {#each table.rows as user (user.id)}
                                 <Table.Row class="group">
-                                    <Table.Cell class="font-mono text-sm text-muted-foreground">
+                                    <Table.Cell
+                                        class="font-mono text-sm text-muted-foreground"
+                                    >
                                         #{user.id}
                                     </Table.Cell>
                                     <Table.Cell class="font-medium">
@@ -213,7 +229,11 @@
                                         @{@html user.username}
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium {getRoleBadgeClass(user.role)}">
+                                        <span
+                                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium {getRoleBadgeClass(
+                                                user.role,
+                                            )}"
+                                        >
                                             {#if user.role === 'admin'}
                                                 <Shield class="w-3 h-3" />
                                             {:else}
@@ -223,7 +243,9 @@
                                         </span>
                                     </Table.Cell>
                                     <Table.Cell class="text-right">
-                                        <div class="flex items-center justify-end gap-2 opacity-30 group-hover:opacity-100 transition-opacity">
+                                        <div
+                                            class="flex items-center justify-end gap-2 opacity-30 group-hover:opacity-100 transition-opacity"
+                                        >
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
@@ -236,7 +258,8 @@
                                                 variant="ghost"
                                                 size="icon"
                                                 class="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                onclick={() => confirmDelete(user)}
+                                                onclick={() =>
+                                                    confirmDelete(user)}
                                             >
                                                 <Trash2 class="w-4 h-4" />
                                             </Button>
@@ -248,9 +271,12 @@
                     </Table.Root>
 
                     {#snippet footer()}
-                        <div class="flex items-center w-full justify-between px-4 py-3 border-t">
+                        <div
+                            class="flex items-center w-full justify-between px-4 py-3 border-t"
+                        >
                             <span class="text-sm text-muted-foreground">
-                                Showing {table.rowCount.start} to {table.rowCount.end} of {table.rowCount.total} entries
+                                Showing {table.rowCount.start} to {table
+                                    .rowCount.end} of {table.rowCount.total} entries
                             </span>
                             <Pagination {table} />
                         </div>
@@ -264,9 +290,13 @@
     <Dialog.Root bind:open={dialogOpen}>
         <Dialog.Content class="sm:max-w-md">
             <Dialog.Header>
-                <Dialog.Title>{isEditing ? 'Edit User' : 'Add New User'}</Dialog.Title>
+                <Dialog.Title
+                    >{isEditing ? 'Edit User' : 'Add New User'}</Dialog.Title
+                >
                 <Dialog.Description>
-                    {isEditing ? 'Update user details below.' : 'Fill in the information to create a new user account.'}
+                    {isEditing
+                        ? 'Update user details below.'
+                        : 'Fill in the information to create a new user account.'}
                 </Dialog.Description>
             </Dialog.Header>
 
@@ -289,22 +319,23 @@
                     />
                 </div>
 
-                    <div class="grid gap-2">
-                        <Label for="password">Password</Label>
-                        <Input
-                            id="password"
-                            type="password"
-                            bind:value={$form.password}
-                            placeholder="Enter password"
-                        />
-                    </div>
+                <div class="grid gap-2">
+                    <Label for="password">Password</Label>
+                    <Input
+                        id="password"
+                        type="password"
+                        bind:value={$form.password}
+                        placeholder="Enter password"
+                    />
+                </div>
 
                 <div class="grid gap-2">
                     <Label for="role">Role</Label>
                     <Select.Root
                         type="single"
                         value={$form.role}
-                        onValueChange={(v) => $form.role = v as 'admin' | 'user'}
+                        onValueChange={(v) =>
+                            ($form.role = v as 'admin' | 'user')}
                     >
                         <Select.Trigger class="w-full">
                             {$form.role === 'admin' ? 'Administrator' : 'User'}
@@ -328,9 +359,7 @@
             </div>
 
             <Dialog.Footer>
-                <Button variant="outline" onclick={closeDialog}>
-                    Cancel
-                </Button>
+                <Button variant="outline" onclick={closeDialog}>Cancel</Button>
                 <Button onclick={saveUser}>
                     {isEditing ? 'Save Changes' : 'Create User'}
                 </Button>

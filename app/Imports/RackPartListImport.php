@@ -8,74 +8,106 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithBatchInserts;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
-use Maatwebsite\Excel\Concerns\WithUpserts;
 
-class RackPartListImport implements ToModel, WithBatchInserts, WithChunkReading, WithHeadingRow, WithUpserts
+class RackPartListImport implements ToModel, WithBatchInserts, WithChunkReading, WithHeadingRow
 {
+    private array $processedRacks = [];
+    private array $duplicatesToRefresh; // Rack numbers that were deleted (should be fresh insert)
+
+    public function __construct(array $duplicatesToRefresh = [])
+    {
+        $this->duplicatesToRefresh = $duplicatesToRefresh;
+    }
+
     public function model(array $row): ?RackPartList
     {
-        // Skip empty rows
         if (empty($row['item_code']) || empty($row['rack_no'])) {
             return null;
         }
 
-        // Check if record exists by item_code (unique identifier)
-        $existing = RackPartList::where('rack_no', $row['rack_no'])->first();
+        $rackNo = $row['rack_no'];
+        $itemCode = $row['item_code'];
 
-        if ($existing && $existing->item_code != $row['item_code']) {
-            $logger = new LoggerPerubahanModel();
+        //for checking if rack no is in dupplicate
+        $isOnduplicate = !in_array($rackNo, $this->duplicatesToRefresh);
 
-            // Update existing record
-            $logger->no_rack = $existing->rack_no = $row['rack_no'] ?? $existing->rack_no;
-            $existing->part_name = $row['part_name'];
-            $logger->before = $existing->item_code;
-            $logger->after = $existing->item_code = $row['item_code'];
-            $existing->cek = in_array($row['cek'] ?? null, ['BENAR', 'SALAH'])
-                ? $row['cek']
-                : $existing->cek;
-            $existing->supplier = $row['supplier'] ?? $existing->supplier;
-            $existing->part_hydrolis = (bool)$row['part_hydrolis'];
-            $existing->type_tractor = $row['type_tractor'] ?? $existing->type_tractor;
-            $existing->satuan = $row['satuan'] ?? $existing->satuan;
-            $existing->sample = $row['sample'] ?? $existing->sample;
+        // Skip duplicates within same file
+        if (isset($this->processedRacks[$rackNo]) &&$isOnduplicate) {
+            return null;
+        }
+        $this->processedRacks[$rackNo] = $itemCode;
 
-            if($logger->no_rack) $logger->save(); //prevent for null no_rack
+        // Check if this rack was marked for refresh (deleted in controller)
+        $isFreshInsert = in_array($rackNo, $this->duplicatesToRefresh);
 
-            return $existing;
-        } elseif ($existing && $existing->item_code === $row['item_code']){
-            return $existing;
+        // If it's a fresh insert (was deleted), just create new
+        if ($isFreshInsert) {
+            return $this->createNewRecord($row);
         }
 
-        // Create new record
+        // Otherwise, try to update existing
+        $existing = RackPartList::where('rack_no', $rackNo)->first();
+
+        if ($existing) {
+            // Update existing and save immediately (don't return for batch)
+            $this->updateExisting($existing, $row);
+            return null; // Exclude from batch insert
+        }
+
+        // No existing found, create new
+        return $this->createNewRecord($row);
+    }
+
+    private function createNewRecord(array $row): RackPartList
+    {
         return new RackPartList([
-            'rack_no' => $row['rack_no'] ?? null,
+            'rack_no' => $row['rack_no'],
             'item_code' => $row['item_code'],
-            'part_name' => $row['part_name'],
-            'cek' => in_array($row['cek'] ?? null, ['BENAR', 'SALAH'])
-                ? $row['cek']
-                : null,
+            'part_name' => $row['part_name'] ?? null,
+            'cek' => in_array($row['cek'] ?? null, ['BENAR', 'SALAH']) ? $row['cek'] : null,
             'supplier' => $row['supplier'] ?? null,
-            'part_hydrolis' => strtolower($row['part_hydrolis'] ?? '') === 'yes'
-                ? true
-                : false,
+            'part_hydrolis' => $this->parseBoolean($row['part_hydrolis'] ?? false),
             'type_tractor' => $row['type_tractor'] ?? null,
             'satuan' => $row['satuan'] ?? null,
             'sample' => $row['sample'] ?? null,
         ]);
     }
 
-    public function uniqueBy(): string|array
+    private function updateExisting(RackPartList $existing, array $row): void
     {
-        return 'item_code'; // Prevents duplicates at database level
+        // Log change if item_code differs
+        if ($existing->item_code != $row['item_code']) {
+            try {
+                $logger = new LoggerPerubahanModel();
+                $logger->no_rack = $existing->rack_no;
+                $logger->before = $existing->item_code;
+                $logger->after = $row['item_code'];
+                $logger->save();
+            } catch (\Exception $e) {
+                \Log::error('Failed to log change: ' . $e->getMessage());
+            }
+
+            $existing->item_code = $row['item_code'];
+        }
+
+        $existing->part_name = $row['part_name'] ?? $existing->part_name;
+        $existing->cek = in_array($row['cek'] ?? null, ['BENAR', 'SALAH']) ? $row['cek'] : $existing->cek;
+        $existing->supplier = $row['supplier'] ?? $existing->supplier;
+        $existing->part_hydrolis = $this->parseBoolean($row['part_hydrolis'] ?? false);
+        $existing->type_tractor = $row['type_tractor'] ?? $existing->type_tractor;
+        $existing->satuan = $row['satuan'] ?? $existing->satuan;
+        $existing->sample = $row['sample'] ?? $existing->sample;
+
+        $existing->save();
     }
 
-    public function batchSize(): int
+    private function parseBoolean($value): bool
     {
-        return 500;
+        if (is_bool($value)) return $value;
+        if (is_numeric($value)) return (bool) $value;
+        return strtolower((string)$value) === 'yes' || $value === '1' || $value === 'true';
     }
 
-    public function chunkSize(): int
-    {
-        return 500;
-    }
+    public function batchSize(): int { return 500; }
+    public function chunkSize(): int { return 500; }
 }

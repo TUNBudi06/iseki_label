@@ -6,6 +6,7 @@ use App\Exports\RackPartListExport;
 use App\Imports\RackPartListImport;
 use App\Models\RackPartList;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -16,7 +17,7 @@ class RackPartListController extends Controller
         $total = RackPartList::count();
 
         $rows = RackPartList::orderBy('rack_no')
-            ->limit(10)
+            ->limit(10)->orderBy('id', 'asc')
             ->get();
 
         return Inertia::render('Rack/index', [
@@ -39,19 +40,41 @@ class RackPartListController extends Controller
             'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
         ]);
 
-        // however there are more than two of rack no that will be insert by import so deleting first is needed
-        RackPartList::select('rack_no')
-            ->groupBy('rack_no')
-            ->havingRaw('COUNT(*) > 2')
-            ->pluck('rack_no')
-            ->each(function ($rackNo) {
-                RackPartList::where('rack_no', $rackNo)->delete();
-            });
+        try {
+            DB::beginTransaction();
 
+            // Step 1: Find rack_no that appear more than once
+            $duplicateRackNos = RackPartList::select('rack_no')
+                ->groupBy('rack_no')
+                ->havingRaw('COUNT(*) > 1')
+                ->pluck('rack_no')
+                ->toArray();
 
-        Excel::import(new RackPartListImport, $request->file('file'));
+            // Step 2: Delete ALL records with those rack_no
+            if (!empty($duplicateRackNos)) {
+                RackPartList::whereIn('rack_no', $duplicateRackNos)->delete();
+                \Log::info('Deleted duplicates for racks: ' . implode(', ', $duplicateRackNos));
+            }
 
-        return back()->with('success', 'Data berhasil diimport.');
+            // Step 3: Import with knowledge of which were deleted
+            // Pass the duplicate list so import knows to treat these as fresh inserts
+            $import = new RackPartListImport($duplicateRackNos);
+            Excel::import($import, $request->file('file'));
+
+            DB::commit();
+
+            $msg = 'Data berhasil diimport.';
+            if (!empty($duplicateRackNos)) {
+                $msg .= ' ' . count($duplicateRackNos) . ' rack duplikat diperbarui: ' . implode(', ', $duplicateRackNos);
+            }
+
+            return back()->with('success', $msg);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Import failed: ' . $e->getMessage());
+            return back()->with('error', 'Import gagal: ' . $e->getMessage());
+        }
     }
 
     public function template()

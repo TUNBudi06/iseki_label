@@ -38,7 +38,7 @@ Route::prefix('user')->group(function () {
     });
 });
 
-Route::prefix('rack')->group(function () {
+Route::prefix('rack')->middleware([\App\Http\Middleware\AuthMiddleware::class])->group(function () {
     Route::get('/',          [RackPartListController::class, 'index'])->name('rack.rackIndex');
     Route::get('/export',    [RackPartListController::class, 'export'])->name('rack.export');
     Route::post('/import',   [RackPartListController::class, 'import'])->name('rack.import');

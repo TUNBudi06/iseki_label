@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\RackPartListController::rackIndex
- * @see app/Http/Controllers/RackPartListController.php:14
+ * @see app/Http/Controllers/RackPartListController.php:15
  * @route '/rack'
  */
 export const rackIndex = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ rackIndex.definition = {
 
 /**
 * @see \App\Http\Controllers\RackPartListController::rackIndex
- * @see app/Http/Controllers/RackPartListController.php:14
+ * @see app/Http/Controllers/RackPartListController.php:15
  * @route '/rack'
  */
 rackIndex.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ rackIndex.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\RackPartListController::rackIndex
- * @see app/Http/Controllers/RackPartListController.php:14
+ * @see app/Http/Controllers/RackPartListController.php:15
  * @route '/rack'
  */
 rackIndex.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -34,7 +34,7 @@ rackIndex.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\RackPartListController::rackIndex
- * @see app/Http/Controllers/RackPartListController.php:14
+ * @see app/Http/Controllers/RackPartListController.php:15
  * @route '/rack'
  */
 rackIndex.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -44,7 +44,7 @@ rackIndex.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\RackPartListController::exportMethod
- * @see app/Http/Controllers/RackPartListController.php:28
+ * @see app/Http/Controllers/RackPartListController.php:29
  * @route '/rack/export'
  */
 export const exportMethod = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -59,7 +59,7 @@ exportMethod.definition = {
 
 /**
 * @see \App\Http\Controllers\RackPartListController::exportMethod
- * @see app/Http/Controllers/RackPartListController.php:28
+ * @see app/Http/Controllers/RackPartListController.php:29
  * @route '/rack/export'
  */
 exportMethod.url = (options?: RouteQueryOptions) => {
@@ -68,7 +68,7 @@ exportMethod.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\RackPartListController::exportMethod
- * @see app/Http/Controllers/RackPartListController.php:28
+ * @see app/Http/Controllers/RackPartListController.php:29
  * @route '/rack/export'
  */
 exportMethod.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -77,7 +77,7 @@ exportMethod.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\RackPartListController::exportMethod
- * @see app/Http/Controllers/RackPartListController.php:28
+ * @see app/Http/Controllers/RackPartListController.php:29
  * @route '/rack/export'
  */
 exportMethod.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -87,7 +87,7 @@ exportMethod.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\RackPartListController::importMethod
- * @see app/Http/Controllers/RackPartListController.php:36
+ * @see app/Http/Controllers/RackPartListController.php:37
  * @route '/rack/import'
  */
 export const importMethod = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -102,7 +102,7 @@ importMethod.definition = {
 
 /**
 * @see \App\Http\Controllers\RackPartListController::importMethod
- * @see app/Http/Controllers/RackPartListController.php:36
+ * @see app/Http/Controllers/RackPartListController.php:37
  * @route '/rack/import'
  */
 importMethod.url = (options?: RouteQueryOptions) => {
@@ -111,7 +111,7 @@ importMethod.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\RackPartListController::importMethod
- * @see app/Http/Controllers/RackPartListController.php:36
+ * @see app/Http/Controllers/RackPartListController.php:37
  * @route '/rack/import'
  */
 importMethod.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -121,7 +121,7 @@ importMethod.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\RackPartListController::template
- * @see app/Http/Controllers/RackPartListController.php:57
+ * @see app/Http/Controllers/RackPartListController.php:80
  * @route '/rack/template'
  */
 export const template = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -136,7 +136,7 @@ template.definition = {
 
 /**
 * @see \App\Http\Controllers\RackPartListController::template
- * @see app/Http/Controllers/RackPartListController.php:57
+ * @see app/Http/Controllers/RackPartListController.php:80
  * @route '/rack/template'
  */
 template.url = (options?: RouteQueryOptions) => {
@@ -145,7 +145,7 @@ template.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\RackPartListController::template
- * @see app/Http/Controllers/RackPartListController.php:57
+ * @see app/Http/Controllers/RackPartListController.php:80
  * @route '/rack/template'
  */
 template.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -154,7 +154,7 @@ template.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\RackPartListController::template
- * @see app/Http/Controllers/RackPartListController.php:57
+ * @see app/Http/Controllers/RackPartListController.php:80
  * @route '/rack/template'
  */
 template.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({

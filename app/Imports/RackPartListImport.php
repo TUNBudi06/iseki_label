@@ -12,11 +12,11 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 class RackPartListImport implements ToModel, WithBatchInserts, WithChunkReading, WithHeadingRow
 {
     private array $processedRacks = [];
-    private array $duplicatesToRefresh; // Rack numbers that were deleted (should be fresh insert)
+    private array $duplicatesInExcel; // These should be fresh inserted
 
-    public function __construct(array $duplicatesToRefresh = [])
+    public function __construct(array $duplicatesInExcel = [])
     {
-        $this->duplicatesToRefresh = $duplicatesToRefresh;
+        $this->duplicatesInExcel = $duplicatesInExcel;
     }
 
     public function model(array $row): ?RackPartList
@@ -26,35 +26,32 @@ class RackPartListImport implements ToModel, WithBatchInserts, WithChunkReading,
         }
 
         $rackNo = $row['rack_no'];
-        $itemCode = $row['item_code'];
 
-        //for checking if rack no is in dupplicate
-        $isOnduplicate = !in_array($rackNo, $this->duplicatesToRefresh);
-
-        // Skip duplicates within same file
-        if (isset($this->processedRacks[$rackNo]) &&$isOnduplicate) {
+        // Skip if we've processed this rack_no (duplicate in Excel)
+        // make sure if it's a duplicate in Excel, we still process it once (fresh insert), but skip any further duplicates
+        if (isset($this->processedRacks[$rackNo]) && !in_array($rackNo, $this->duplicatesInExcel)) {
             return null;
         }
-        $this->processedRacks[$rackNo] = $itemCode;
+        $this->processedRacks[$rackNo] = true;
 
-        // Check if this rack was marked for refresh (deleted in controller)
-        $isFreshInsert = in_array($rackNo, $this->duplicatesToRefresh);
+        // Check if this was a duplicate in Excel (deleted from DB, should be fresh insert)
+        $isExcelDuplicate = in_array($rackNo, $this->duplicatesInExcel);
 
-        // If it's a fresh insert (was deleted), just create new
-        if ($isFreshInsert) {
+        if ($isExcelDuplicate) {
+            // Fresh insert (DB was cleared for this rack_no)
             return $this->createNewRecord($row);
         }
 
-        // Otherwise, try to update existing
+        // Check if exists in DB (non-duplicate, should update)
         $existing = RackPartList::where('rack_no', $rackNo)->first();
 
         if ($existing) {
-            // Update existing and save immediately (don't return for batch)
+            // Update and save immediately
             $this->updateExisting($existing, $row);
-            return null; // Exclude from batch insert
+            return null;
         }
 
-        // No existing found, create new
+        // New record
         return $this->createNewRecord($row);
     }
 
@@ -75,7 +72,6 @@ class RackPartListImport implements ToModel, WithBatchInserts, WithChunkReading,
 
     private function updateExisting(RackPartList $existing, array $row): void
     {
-        // Log change if item_code differs
         if ($existing->item_code != $row['item_code']) {
             try {
                 $logger = new LoggerPerubahanModel();
@@ -86,7 +82,6 @@ class RackPartListImport implements ToModel, WithBatchInserts, WithChunkReading,
             } catch (\Exception $e) {
                 \Log::error('Failed to log change: ' . $e->getMessage());
             }
-
             $existing->item_code = $row['item_code'];
         }
 

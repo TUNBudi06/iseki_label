@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\RackPartListExport;
+use App\Imports\RackPartListDuplicateScanner;
 use App\Imports\RackPartListImport;
 use App\Models\RackPartList;
 use Illuminate\Http\Request;
@@ -40,32 +41,43 @@ class RackPartListController extends Controller
             'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
         ]);
 
+        $file = $request->file('file');
+
         try {
             DB::beginTransaction();
 
-            // Step 1: Find rack_no that appear more than once
-            $duplicateRackNos = RackPartList::select('rack_no')
-                ->groupBy('rack_no')
-                ->havingRaw('COUNT(*) > 1')
-                ->pluck('rack_no')
-                ->toArray();
+            // PHASE 1: Scan Excel to find duplicates within the file
+            $scanner = new RackPartListDuplicateScanner();
+            Excel::import($scanner, $file);
 
-            // Step 2: Delete ALL records with those rack_no
-            if (!empty($duplicateRackNos)) {
-                RackPartList::whereIn('rack_no', $duplicateRackNos)->delete();
-                \Log::info('Deleted duplicates for racks: ' . implode(', ', $duplicateRackNos));
+            $duplicatesInExcel = $scanner->getDuplicates();
+            $allRackNosInExcel = $scanner->getAllRackNos();
+
+            debugbar()->info('Excel scan complete', [
+                'total_racks' => count($allRackNosInExcel),
+                'duplicates_in_excel' => $duplicatesInExcel
+            ]);
+
+            // PHASE 2: Delete from database where rack_no appears multiple times in Excel
+            // OR where rack_no exists in DB but will be replaced by Excel data
+            if (!empty($duplicatesInExcel)) {
+                // Delete duplicates that exist in Excel multiple times
+                RackPartList::whereIn('rack_no', $duplicatesInExcel)->delete();
+                debugbar()->info('Deleted DB duplicates for: ' . implode(', ', $duplicatesInExcel));
             }
 
-            // Step 3: Import with knowledge of which were deleted
-            // Pass the duplicate list so import knows to treat these as fresh inserts
-            $import = new RackPartListImport($duplicateRackNos);
-            Excel::import($import, $request->file('file'));
+            // Reset file pointer for second read
+            $file->getRealPath(); // Ensure it's saved
+
+            // PHASE 3: Import with knowledge of which were duplicates
+            $import = new RackPartListImport($duplicatesInExcel);
+            Excel::import($import, $file);
 
             DB::commit();
 
             $msg = 'Data berhasil diimport.';
-            if (!empty($duplicateRackNos)) {
-                $msg .= ' ' . count($duplicateRackNos) . ' rack duplikat diperbarui: ' . implode(', ', $duplicateRackNos);
+            if (!empty($duplicatesInExcel)) {
+                $msg .= ' ' . count($duplicatesInExcel) . ' duplikat ditemukan dan diperbaiki.';
             }
 
             return back()->with('success', $msg);
@@ -76,6 +88,7 @@ class RackPartListController extends Controller
             return back()->with('error', 'Import gagal: ' . $e->getMessage());
         }
     }
+
 
     public function template()
     {

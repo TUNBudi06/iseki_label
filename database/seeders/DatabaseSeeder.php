@@ -19,7 +19,7 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        $this->call(RackItemSeeder::class);
+//        $this->call(RackItemSeeder::class);
 
         User::insert([
             [

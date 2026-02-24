@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AboutController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\LoggerPerubahanController;
 use App\Http\Controllers\PrintHistoryController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RackPartListController;
@@ -47,3 +48,8 @@ Route::prefix('rack')->middleware([\App\Http\Middleware\AuthMiddleware::class])-
     Route::post('/update/{id}', [RackPartListController::class, 'update'])->name('rack.rackUpdate');
     Route::delete('/delete/{id}', [RackPartListController::class, 'destroy'])->name('rack.rackDestroy');
 });
+Route::get('/logger-perubahan', [LoggerPerubahanController::class, 'index'])
+    ->name('logger-perubahan.logIndex');
+
+Route::delete('/logger-perubahan/{id}', [LoggerPerubahanController::class, 'destroy'])
+    ->name('logger-perubahan.logDestroy');

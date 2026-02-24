@@ -148,6 +148,16 @@ class RackPartListController extends Controller
             'sample' => 'nullable|string|max:50',
         ]);
 
+        if ($rackPart->item_code != $validated['item_code']) {
+            // Log the change
+            \App\Models\LoggerPerubahanModel::create([
+                'no_rack' => $rackPart->rack_no,
+                'before' => $rackPart->item_code,
+                'after' => $validated['item_code'],
+                'description' => "Item code changed from {$rackPart->item_code} to {$validated['item_code']} for rack {$rackPart->rack_no}",
+            ]);
+        }
+
         $rackPart->update($validated);
 
         return redirect()->back()->with('success', 'Updated successfully');

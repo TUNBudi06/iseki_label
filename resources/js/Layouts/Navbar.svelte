@@ -15,6 +15,7 @@
         SquareLibrary, FileClock,
     } from '@lucide/svelte';
     import { rackIndex } from '$routes/rack/index.ts';
+    import {logIndex} from "$routes/logger-perubahan/index.ts";
 
     let { children = null } = $props();
 </script>
@@ -65,7 +66,7 @@
                                 'Rack List',
                                 SquareLibrary,
                             )}
-                            {@render NavMenu(routeUrl(about()), 'Logs', FileClock)}
+                            {@render NavMenu(routeUrl(logIndex()), 'Logs', FileClock)}
                         </div>
                         <div class="flex gap-4">
                             {@render NavMenu(

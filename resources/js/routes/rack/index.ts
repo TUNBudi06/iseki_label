@@ -251,7 +251,7 @@ rackUpdate.post = (args: { id: string | number } | [id: string | number ] | stri
 
 /**
 * @see \App\Http\Controllers\RackPartListController::rackDestroy
- * @see app/Http/Controllers/RackPartListController.php:156
+ * @see app/Http/Controllers/RackPartListController.php:166
  * @route '/rack/delete/{id}'
  */
 export const rackDestroy = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -266,7 +266,7 @@ rackDestroy.definition = {
 
 /**
 * @see \App\Http\Controllers\RackPartListController::rackDestroy
- * @see app/Http/Controllers/RackPartListController.php:156
+ * @see app/Http/Controllers/RackPartListController.php:166
  * @route '/rack/delete/{id}'
  */
 rackDestroy.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -294,7 +294,7 @@ rackDestroy.url = (args: { id: string | number } | [id: string | number ] | stri
 
 /**
 * @see \App\Http\Controllers\RackPartListController::rackDestroy
- * @see app/Http/Controllers/RackPartListController.php:156
+ * @see app/Http/Controllers/RackPartListController.php:166
  * @route '/rack/delete/{id}'
  */
 rackDestroy.delete = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({

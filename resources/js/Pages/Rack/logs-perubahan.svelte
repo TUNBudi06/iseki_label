@@ -271,7 +271,7 @@
                                 </Table.Row>
                             {:else}
                                 <Table.Row>
-                                    <Table.Cell colspan="7" class="text-center py-8 text-muted-foreground">
+                                    <Table.Cell colspan={7} class="text-center py-8 text-muted-foreground">
                                         No change logs found.
                                     </Table.Cell>
                                 </Table.Row>

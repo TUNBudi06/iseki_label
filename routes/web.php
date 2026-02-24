@@ -43,4 +43,7 @@ Route::prefix('rack')->middleware([\App\Http\Middleware\AuthMiddleware::class])-
     Route::get('/export',    [RackPartListController::class, 'export'])->name('rack.export');
     Route::post('/import',   [RackPartListController::class, 'import'])->name('rack.import');
     Route::get('/template',  [RackPartListController::class, 'template'])->name('rack.template');
+    Route::post('/store',   [RackPartListController::class, 'store'])->name('rack.rackStore');
+    Route::post('/update/{id}', [RackPartListController::class, 'update'])->name('rack.rackUpdate');
+    Route::delete('/delete/{id}', [RackPartListController::class, 'destroy'])->name('rack.rackDestroy');
 });

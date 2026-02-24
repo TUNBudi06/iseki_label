@@ -4,6 +4,7 @@
     import { Button } from '$shadcn/components/ui/button/index.js';
     import * as Card from '$shadcn/components/ui/card/index.js';
     import * as Table from '$shadcn/components/ui/table/index.js';
+    import FormAddRack from "$/Pages/Rack/FormAddRack.svelte";
     import {
         Datatable,
         TableHandler,
@@ -22,8 +23,10 @@
     } from '@lucide/svelte';
     import { routeUrl, buildRoute } from '@tunbudi06/inertia-route-helper';
     import { dataFetching } from '$routes/api/rack';
-    import { exportMethod, importMethod, template } from '$routes/rack';
+    import {exportMethod, importMethod, rackDestroy, template} from '$routes/rack';
     import { formatCode10 } from '$lib/print/text/text-formatter.ts';
+    import {useForm} from "@inertiajs/svelte";
+    import {toast} from "svelte-sonner";
 
     interface RackRow {
         id: number;
@@ -77,9 +80,17 @@
         return data.data as RackRow[];
     });
 
+    const formDelete = useForm({
+        id: null,
+    })
     function confirmDelete(row: RackRow) {
         if (confirm(`Delete "${row.part_name}"?`)) {
-            rackData = rackData.filter((r) => r.id !== row.id);
+            $formDelete.delete(routeUrl(rackDestroy({id: row.id})), {
+                onSuccess: () => {
+                    toast.success('Rack part deleted successfully');
+                    t.invalidate();
+                },
+            });
         }
     }
 
@@ -148,6 +159,26 @@
             fileInput.value = '';
         }
     }
+
+    let dialogOpen = $state(false);
+    let selectedRackPart = $state(null);
+
+    function openCreate() {
+        selectedRackPart = null;
+        dialogOpen = true;
+    }
+
+    function openEdit(rackPart: RackRow) {
+        // In a real app, you might want to fetch the full details for the rack part here
+        //@ts-ignore
+        selectedRackPart = rackPart;
+        dialogOpen = true;
+    }
+
+    function handleSuccess() {
+        t.invalidate();
+        console.log('success callback');
+    }
 </script>
 
 <svelte:head><title>Rack Part List</title></svelte:head>
@@ -181,7 +212,7 @@
                     <Upload class="w-4 h-4" />
                     {importing ? 'Importing…' : 'Import'}
                 </Button>
-                <Button class="gap-2">
+                <Button class="gap-2" onclick={()=> openCreate()}>
                     <Plus class="w-4 h-4" /> Add Part
                 </Button>
                 <input
@@ -334,6 +365,7 @@
                                             class="inline-flex items-center gap-1 opacity-30 group-hover:opacity-100 transition-opacity"
                                         >
                                             <Button
+                                                onclick={() => openEdit(row)}
                                                 variant="ghost"
                                                 size="icon"
                                                 class="h-7 w-7"
@@ -377,4 +409,10 @@
             </Card.Content>
         </Card.Root>
     </div>
+
+    <FormAddRack
+        bind:open={dialogOpen}
+        rackPart={selectedRackPart}
+        onSuccess={() => handleSuccess()}
+    />
 </Layout>

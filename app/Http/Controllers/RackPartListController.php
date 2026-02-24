@@ -112,4 +112,52 @@ class RackPartListController extends Controller
             'rack-part-list-template.xlsx'
         );
     }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'rack_no' => 'required|string|max:255|unique:rack_part_lists',
+            'item_code' => 'required|string|max:255',
+            'part_name' => 'nullable|string|max:255',
+            'cek' => 'nullable|in:BENAR,SALAH',
+            'supplier' => 'nullable|string|max:255',
+            'part_hydrolis' => 'boolean',
+            'type_tractor' => 'nullable|string|max:255',
+            'satuan' => 'nullable|string|max:50',
+            'sample' => 'nullable|string|max:50',
+        ]);
+
+        RackPartList::create($validated);
+
+        return redirect()->back()->with('success', 'Created successfully');
+    }
+
+    public function update(Request $request, $id)
+    {
+        $rackPart = RackPartList::findOrFail($id);
+
+        $validated = $request->validate([
+            'rack_no' => 'required|string|max:255|unique:rack_part_lists,rack_no,' . $id,
+            'item_code' => 'required|string|max:255',
+            'part_name' => 'nullable|string|max:255',
+            'cek' => 'nullable|in:BENAR,SALAH',
+            'supplier' => 'nullable|string|max:255',
+            'part_hydrolis' => 'boolean',
+            'type_tractor' => 'nullable|string|max:255',
+            'satuan' => 'nullable|string|max:50',
+            'sample' => 'nullable|string|max:50',
+        ]);
+
+        $rackPart->update($validated);
+
+        return redirect()->back()->with('success', 'Updated successfully');
+    }
+
+    public function destroy(string $id)
+    {
+        $rackPart = RackPartList::findOrFail($id);
+        $rackPart->delete();
+
+        return redirect()->back()->with('success', 'Deleted successfully');
+    }
 }

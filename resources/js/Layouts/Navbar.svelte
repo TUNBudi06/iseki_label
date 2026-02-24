@@ -12,7 +12,7 @@
         User,
         Info,
         LogOut,
-        SquareLibrary,
+        SquareLibrary, FileClock,
     } from '@lucide/svelte';
     import { rackIndex } from '$routes/rack/index.ts';
 
@@ -56,13 +56,16 @@
                         </div>
                     {:else}
                         <div class="flex gap-4">
-                            {@render NavMenu(routeUrl(manage()), 'User', User)}
+                            {#if $page.props.user.role === 'admin'}
+                                {@render NavMenu(routeUrl(manage()), 'User', User)}
+                            {/if}
                             {@render NavMenu(routeUrl(home()), 'Home', Home)}
                             {@render NavMenu(
                                 routeUrl(rackIndex()),
                                 'Rack List',
                                 SquareLibrary,
                             )}
+                            {@render NavMenu(routeUrl(about()), 'Logs', FileClock)}
                         </div>
                         <div class="flex gap-4">
                             {@render NavMenu(

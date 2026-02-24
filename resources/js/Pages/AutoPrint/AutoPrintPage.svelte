@@ -9,6 +9,7 @@
         printModule,
         type PrintModuleState,
     } from '$lib/print-module-svelte';
+    import { PrintAPI } from '$lib/print-module';
     import { useInterval, IsMounted } from 'runed';
     import { routeUrl } from '@tunbudi06/inertia-route-helper';
 
@@ -76,6 +77,7 @@
         uploadOk: boolean;
         error: string | null;
         lastRunAt: number | null;
+        selectedPrinter: string | null;
     }
 
     // ============================================================================
@@ -159,6 +161,7 @@
             uploadOk: false,
             error: null,
             lastRunAt: null,
+            selectedPrinter: null,
         } as PrintContext,
         states: {
             // ── Waiting for next tick ───────────────────────────────────────────
@@ -168,7 +171,13 @@
 
             // ── Scheduler fires, prepare for run ───────────────────────────────
             scheduling: {
-                entry: assign({ error: null, printOk: false, uploadOk: false }),
+                entry: assign({
+                    error: null,
+                    printOk: false,
+                    uploadOk: false,
+                    selectedPrinter: ({ event }: { event: any }) =>
+                        event.printer ?? null,
+                }),
                 after: { [DURATION_ANIMATION * 1000]: 'fetching' },
             },
 
@@ -363,27 +372,29 @@
 
             executePrint: fromPromise(
                 async ({ input }: { input: PrintContext }) => {
-                    if (!input.pdfBlob || !selectedPrinter)
-                        throw new Error('Missing PDF or printer');
-                    // TODO: call local print service
-                    console.log(
-                        'Printing to:',
-                        selectedPrinter,
-                        'size:',
-                        input.pdfBlob.size,
+                    if (!input.pdfBlob)
+                        throw new Error('Missing PDF blob');
+                    if (!input.selectedPrinter)
+                        throw new Error('No printer selected');
+
+                    // Convert Blob → File (PrintAPI expects a File object)
+                    const pdfFile = new File(
+                        [input.pdfBlob],
+                        `print-job-${Date.now()}.pdf`,
+                        { type: 'application/pdf' },
                     );
 
-                    // // download for test the result
-                    // const url = URL.createObjectURL(input.pdfBlob);
-                    // const link = document.createElement('a');
-                    // link.href = url;
-                    // link.download = `print-job-${Date.now()}.pdf`;
-                    // document.body.appendChild(link);
-                    // link.click();
-                    // document.body.removeChild(link);
-                    // URL.revokeObjectURL(url);
+                    const api = new PrintAPI();
+                    const result = await api.printPDF(
+                        pdfFile,
+                        input.selectedPrinter,
+                    );
 
-                    await new Promise((r) => setTimeout(r, 1000));
+                    if (!result?.success) {
+                        throw new Error(
+                            result?.message ?? 'Print request failed',
+                        );
+                    }
                 },
             ),
 
@@ -446,7 +457,7 @@
         immediate: false,
         callback: async () => {
             if ($snapshot.value === 'idle') {
-                send({ type: 'START' });
+                send({ type: 'START', printer: selectedPrinter });
             }
         },
     });

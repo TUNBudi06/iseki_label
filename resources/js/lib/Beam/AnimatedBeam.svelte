@@ -2,6 +2,7 @@
     import { cn } from '$shadcn/utils';
     import { untrack } from 'svelte';
     import { M } from 'motion-start';
+    import {v4 as uuidv4} from 'uuid';
 
     interface Props {
         class?: any;
@@ -51,7 +52,7 @@
         onAnimationComplete,
     }: Props = $props();
 
-    let id = $state(crypto.randomUUID().slice(0, 8));
+    let id = $state(uuidv4().slice(0, 8));
     let pathD = $state('');
     let svgDimensions = $state({ width: 0, height: 0 });
     let isReady = $state(false);

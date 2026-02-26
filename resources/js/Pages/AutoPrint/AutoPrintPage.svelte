@@ -264,11 +264,16 @@
                         actions: assign({ printOk: true }),
                     },
                     onError: {
-                        target: 'error',
+                        // Print failure: silently reset all state back to idle
+                        // so the next cycle can retry cleanly
+                        target: 'idle',
                         actions: assign({
-                            error: ({ event }) =>
-                                (event.error as Error)?.message ??
-                                String(event.error),
+                            queueData: [],
+                            renderedData: [],
+                            pdfBlob: null,
+                            printOk: false,
+                            uploadOk: false,
+                            error: null,
                         }),
                     },
                 },
@@ -385,10 +390,19 @@
                     );
 
                     const api = new PrintAPI();
-                    const result = await api.printPDF(
-                        pdfFile,
-                        input.selectedPrinter,
+
+                    // 30s timeout — on timeout or failure, state resets to idle
+                    const timeout = new Promise<never>((_, reject) =>
+                        setTimeout(
+                            () => reject(new Error('Print request timed out')),
+                            30_000,
+                        ),
                     );
+
+                    const result = await Promise.race([
+                        api.printPDF(pdfFile, input.selectedPrinter),
+                        timeout,
+                    ]);
 
                     if (!result?.success) {
                         throw new Error(

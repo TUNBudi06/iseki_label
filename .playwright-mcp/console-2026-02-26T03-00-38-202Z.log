@@ -1,0 +1,3 @@
+[    3003ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost/favicon.svg:0
+[    3095ms] The requested module '/iseki_kyarcom/public/build/resources/js/routes/index.ts?t=1772073862637' does not provide an export named 'kyarcom'
+[  106842ms] The requested module '/iseki_kyarcom/public/build/resources/js/routes/index.ts?t=1772073862637' does not provide an export named 'kyarcom'

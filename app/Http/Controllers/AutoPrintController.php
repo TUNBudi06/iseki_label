@@ -15,10 +15,10 @@ class AutoPrintController extends Controller
 
     public function getAutoPrintList()
     {
-        $timestamp = now()->getTimestamp();
         $autoPrintList = QueueLabelPrint::where('auto_print', true)
             ->where('printed', false)
             ->with('RackList')
+            ->limit(10)
             ->get();
 
         debugbar()->log($autoPrintList);
@@ -29,10 +29,21 @@ class AutoPrintController extends Controller
     public function markAsPrinted(Request $request)
     {
         $ids = $request->input('ids');
-        $id_list = json_decode($ids, true);
+
+        // Support both JSON-encoded string and plain array
+        if (is_string($ids)) {
+            $id_list = json_decode($ids, true);
+        } else {
+            $id_list = (array) $ids;
+        }
+
+        if (empty($id_list)) {
+            return response()->json(['error' => 'No IDs provided'], 422);
+        }
+
         debugbar()->info($id_list);
         QueueLabelPrint::whereIn('id', $id_list)->update(['printed' => true]);
 
-        return $id_list;
+        return response()->json(['marked' => count($id_list), 'ids' => $id_list]);
     }
 }

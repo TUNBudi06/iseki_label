@@ -229,8 +229,9 @@
 
             // ── Render engine processes each item (Render node) ────────────────
             rendering: {
-                // Longer pause: gives AutoRender DOM time to fully paint
-                after: { [DURATION_ANIMATION * 1000 + 500]: 'generating' },
+                // Dynamic pause: base 2s + 350ms per label so DOM fully paints for large batches
+                // Uses named delay 'RENDERING_DELAY' resolved in .provide({ delays })
+                after: { RENDERING_DELAY: 'generating' },
             },
 
             // ── Generate the PDF blob ───────────────────────────────────────────
@@ -337,7 +338,7 @@
 
                 // Wait for Svelte to flush DOM updates from renderedData
                 await tick();
-                await new Promise((r) => setTimeout(r, 300));
+                await new Promise((r) => setTimeout(r, 600));
 
                 const [{ default: jsPDF }, { default: html2canvas }] =
                     await Promise.all([
@@ -415,16 +416,23 @@
             executeUpload: fromPromise(
                 async ({ input }: { input: PrintContext }) => {
                     const ids = input.queueData.map((item: any) => item.id);
-                    const formData = new FormData();
-                    formData.append('ids', JSON.stringify(ids));
                     const response = await fetch(routeUrl(markAutoPrint()), {
                         method: 'POST',
-                        body: formData,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: JSON.stringify({ ids: JSON.stringify(ids) }),
                     });
                     if (!response.ok)
                         throw new Error('Upload failed — service stopped');
                 },
             ),
+        },
+        delays: {
+            // Dynamic: base 2s + 350ms per label, minimum 2s
+            RENDERING_DELAY: ({ context }: { context: PrintContext }) =>
+                Math.max(2000, 2000 + context.queueData.length * 350),
         },
     } as any);
 

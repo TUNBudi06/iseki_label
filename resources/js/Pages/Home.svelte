@@ -27,7 +27,6 @@
     import { toast } from 'svelte-sonner';
     import { destroy } from '$routes/api/queue-label-prints';
     import { markAsPrinted } from '$routes/home';
-    import { useForm } from '@inertiajs/svelte';
 
     // Interface matching backend data structure
     interface QueueItem {
@@ -255,20 +254,32 @@
         return () => clearInterval(interval);
     });
 
-    const markForm = useForm({
-        id: 0,
-    });
-    function markDone(index: number) {
-        $markForm.id = handler.rows[index].id;
-        $markForm.post(routeUrl(markAsPrinted()), {
-            onSuccess: () => {
+    async function markDone(index: number) {
+        const labelId = handler.rows[index].id;
+        try {
+            const response = await fetch(routeUrl(markAsPrinted()), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector('meta[name="csrf-token"]')
+                            ?.getAttribute('content') ?? '',
+                },
+                body: JSON.stringify({ id: labelId }),
+            });
+
+            if (response.ok || response.status === 204) {
                 toast.success('Label marked as printed!');
-                reloadOnly();
-            },
-            onError: () => {
+                await reloadOnly();
+            } else {
                 toast.error('Failed to mark label as printed.');
-            },
-        });
+            }
+        } catch (error) {
+            console.error('Mark done failed:', error);
+            toast.error('Failed to mark label as printed.');
+        }
     }
 
     // --- PDF Server Printing guide helpers (implements the commented block) ---

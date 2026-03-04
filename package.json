@@ -57,6 +57,7 @@
         "@laravel/vite-plugin-wayfinder": "^0.1.7",
         "@tunbudi06/inertia-route-helper": "^2.0.2",
         "@xstate/svelte": "^5.0.0",
+        "geist": "^1.7.0",
         "html2canvas": "^1.4.1",
         "html2canvas-pro": "^1.6.7",
         "html2pdf.js": "^0.14.0",

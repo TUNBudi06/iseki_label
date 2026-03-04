@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+
 @custom-variant dark (&:is(.dark *));
 /*@plugin "tailwindcss-debug-screens";*/
 
@@ -202,4 +203,27 @@
 
 .animate-shine {
     animation: shine 2s linear infinite;
+}
+
+@import "tailwindcss";
+
+@font-face {
+    font-family: "Geist";
+    src: url("../font/GeistMono-VariableFont_wght.ttf") format("truetype");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Geist Mono";
+    src: url("../font/GeistMono-VariableFont_wght.ttf") format("truetype");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@theme {
+    --font-sans: "Geist", sans-serif;
+    --font-mono: "Geist Mono", monospace;
 }

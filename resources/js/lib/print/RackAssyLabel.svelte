@@ -43,7 +43,7 @@
             <AutoFitText minPx={16} maxPx={20} text={name} />
         </h2>
         <h2
-            class="border-b-2 w-full font-normal tracking-tighter font-sans text-xs m-y-1"
+            class="border-b-2 w-full font-normal tracking-tighter font-mono text-xs m-y-1"
         >
             <AutoFitText minPx={15} maxPx={18} text={type} />
         </h2>

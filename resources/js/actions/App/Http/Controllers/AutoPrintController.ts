@@ -1,5 +1,48 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../wayfinder'
 /**
+* @see \App\Http\Controllers\AutoPrintController::index
+ * @see app/Http/Controllers/AutoPrintController.php:11
+ * @route '/home/print/automation'
+ */
+export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: index.url(options),
+    method: 'get',
+})
+
+index.definition = {
+    methods: ["get","head"],
+    url: '/home/print/automation',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+* @see \App\Http\Controllers\AutoPrintController::index
+ * @see app/Http/Controllers/AutoPrintController.php:11
+ * @route '/home/print/automation'
+ */
+index.url = (options?: RouteQueryOptions) => {
+    return index.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\AutoPrintController::index
+ * @see app/Http/Controllers/AutoPrintController.php:11
+ * @route '/home/print/automation'
+ */
+index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: index.url(options),
+    method: 'get',
+})
+/**
+* @see \App\Http\Controllers\AutoPrintController::index
+ * @see app/Http/Controllers/AutoPrintController.php:11
+ * @route '/home/print/automation'
+ */
+index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: index.url(options),
+    method: 'head',
+})
+
+/**
 * @see \App\Http\Controllers\AutoPrintController::getAutoPrintList
  * @see app/Http/Controllers/AutoPrintController.php:16
  * @route '/api/auto-print/list'
@@ -43,42 +86,8 @@ getAutoPrintList.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =
 })
 
 /**
-* @see \App\Http\Controllers\AutoPrintController::markAsSent
- * @see app/Http/Controllers/AutoPrintController.php:38
- * @route '/api/auto-print/mark-as-sent'
- */
-export const markAsSent = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
-    url: markAsSent.url(options),
-    method: 'post',
-})
-
-markAsSent.definition = {
-    methods: ["post"],
-    url: '/api/auto-print/mark-as-sent',
-} satisfies RouteDefinition<["post"]>
-
-/**
-* @see \App\Http\Controllers\AutoPrintController::markAsSent
- * @see app/Http/Controllers/AutoPrintController.php:38
- * @route '/api/auto-print/mark-as-sent'
- */
-markAsSent.url = (options?: RouteQueryOptions) => {
-    return markAsSent.definition.url + queryParams(options)
-}
-
-/**
-* @see \App\Http\Controllers\AutoPrintController::markAsSent
- * @see app/Http/Controllers/AutoPrintController.php:38
- * @route '/api/auto-print/mark-as-sent'
- */
-markAsSent.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
-    url: markAsSent.url(options),
-    method: 'post',
-})
-
-/**
 * @see \App\Http\Controllers\AutoPrintController::markAsPrinted
- * @see app/Http/Controllers/AutoPrintController.php:68
+ * @see app/Http/Controllers/AutoPrintController.php:29
  * @route '/api/auto-print/mark-as-printed'
  */
 export const markAsPrinted = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -93,7 +102,7 @@ markAsPrinted.definition = {
 
 /**
 * @see \App\Http\Controllers\AutoPrintController::markAsPrinted
- * @see app/Http/Controllers/AutoPrintController.php:68
+ * @see app/Http/Controllers/AutoPrintController.php:29
  * @route '/api/auto-print/mark-as-printed'
  */
 markAsPrinted.url = (options?: RouteQueryOptions) => {
@@ -102,56 +111,13 @@ markAsPrinted.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\AutoPrintController::markAsPrinted
- * @see app/Http/Controllers/AutoPrintController.php:68
+ * @see app/Http/Controllers/AutoPrintController.php:29
  * @route '/api/auto-print/mark-as-printed'
  */
 markAsPrinted.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: markAsPrinted.url(options),
     method: 'post',
 })
-
-/**
-* @see \App\Http\Controllers\AutoPrintController::index
- * @see app/Http/Controllers/AutoPrintController.php:11
- * @route '/home/print/automation'
- */
-export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
-    url: index.url(options),
-    method: 'get',
-})
-
-index.definition = {
-    methods: ["get","head"],
-    url: '/home/print/automation',
-} satisfies RouteDefinition<["get","head"]>
-
-/**
-* @see \App\Http\Controllers\AutoPrintController::index
- * @see app/Http/Controllers/AutoPrintController.php:11
- * @route '/home/print/automation'
- */
-index.url = (options?: RouteQueryOptions) => {
-    return index.definition.url + queryParams(options)
-}
-
-/**
-* @see \App\Http\Controllers\AutoPrintController::index
- * @see app/Http/Controllers/AutoPrintController.php:11
- * @route '/home/print/automation'
- */
-index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
-    url: index.url(options),
-    method: 'get',
-})
-/**
-* @see \App\Http\Controllers\AutoPrintController::index
- * @see app/Http/Controllers/AutoPrintController.php:11
- * @route '/home/print/automation'
- */
-index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
-    url: index.url(options),
-    method: 'head',
-})
-const AutoPrintController = { getAutoPrintList, markAsSent, markAsPrinted, index }
+const AutoPrintController = { index, getAutoPrintList, markAsPrinted }
 
 export default AutoPrintController

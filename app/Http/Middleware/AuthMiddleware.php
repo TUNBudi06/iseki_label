@@ -19,6 +19,12 @@ class AuthMiddleware
         if (Auth::check()) {
             return $next($request);
         } else {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthenticated. Please login first.',
+                ], 401);
+            }
             return redirect()->route('user.login');
         }
     }

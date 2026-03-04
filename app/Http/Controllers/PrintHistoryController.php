@@ -163,4 +163,63 @@ class PrintHistoryController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Return a single label back to queue (mark as not printed).
+     */
+    public function returnToQueue(int $id)
+    {
+        try {
+            $label = QueueLabelPrint::findOrFail($id);
+
+            if (! $label->printed) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Label is already in queue (not printed)',
+                ], 400);
+            }
+
+            $label->update(['printed' => false]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Label returned to queue successfully',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to return label to queue: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Return multiple labels back to queue (mark as not printed).
+     */
+    public function returnToQueueMultiple(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:queue_label_prints,id',
+        ]);
+
+        try {
+            $ids = $request->input('ids');
+
+            $updated = QueueLabelPrint::whereIn('id', $ids)
+                ->where('printed', true)
+                ->update(['printed' => false]);
+
+            return response()->json([
+                'success' => true,
+                'message' => $updated.' labels returned to queue',
+                'updated_count' => $updated,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to return labels to queue: '.$e->getMessage(),
+            ], 500);
+        }
+    }
 }

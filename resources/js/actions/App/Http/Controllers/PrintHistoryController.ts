@@ -1,5 +1,48 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
+* @see \App\Http\Controllers\PrintHistoryController::index
+ * @see app/Http/Controllers/PrintHistoryController.php:16
+ * @route '/home/print/history'
+ */
+export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: index.url(options),
+    method: 'get',
+})
+
+index.definition = {
+    methods: ["get","head"],
+    url: '/home/print/history',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+* @see \App\Http\Controllers\PrintHistoryController::index
+ * @see app/Http/Controllers/PrintHistoryController.php:16
+ * @route '/home/print/history'
+ */
+index.url = (options?: RouteQueryOptions) => {
+    return index.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\PrintHistoryController::index
+ * @see app/Http/Controllers/PrintHistoryController.php:16
+ * @route '/home/print/history'
+ */
+index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: index.url(options),
+    method: 'get',
+})
+/**
+* @see \App\Http\Controllers\PrintHistoryController::index
+ * @see app/Http/Controllers/PrintHistoryController.php:16
+ * @route '/home/print/history'
+ */
+index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: index.url(options),
+    method: 'head',
+})
+
+/**
 * @see \App\Http\Controllers\PrintHistoryController::reprintSingle
  * @see app/Http/Controllers/PrintHistoryController.php:42
  * @route '/api/print-history/reprint/{id}'
@@ -174,47 +217,91 @@ destroyMultiple.delete = (options?: RouteQueryOptions): RouteDefinition<'delete'
 })
 
 /**
-* @see \App\Http\Controllers\PrintHistoryController::index
- * @see app/Http/Controllers/PrintHistoryController.php:16
- * @route '/home/print/history'
+* @see \App\Http\Controllers\PrintHistoryController::returnToQueue
+ * @see app/Http/Controllers/PrintHistoryController.php:170
+ * @route '/api/print-history/return-to-queue/{id}'
  */
-export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
-    url: index.url(options),
-    method: 'get',
+export const returnToQueue = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: returnToQueue.url(args, options),
+    method: 'post',
 })
 
-index.definition = {
-    methods: ["get","head"],
-    url: '/home/print/history',
-} satisfies RouteDefinition<["get","head"]>
+returnToQueue.definition = {
+    methods: ["post"],
+    url: '/api/print-history/return-to-queue/{id}',
+} satisfies RouteDefinition<["post"]>
 
 /**
-* @see \App\Http\Controllers\PrintHistoryController::index
- * @see app/Http/Controllers/PrintHistoryController.php:16
- * @route '/home/print/history'
+* @see \App\Http\Controllers\PrintHistoryController::returnToQueue
+ * @see app/Http/Controllers/PrintHistoryController.php:170
+ * @route '/api/print-history/return-to-queue/{id}'
  */
-index.url = (options?: RouteQueryOptions) => {
-    return index.definition.url + queryParams(options)
+returnToQueue.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
+    if (typeof args === 'string' || typeof args === 'number') {
+        args = { id: args }
+    }
+
+    
+    if (Array.isArray(args)) {
+        args = {
+                    id: args[0],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        id: args.id,
+                }
+
+    return returnToQueue.definition.url
+            .replace('{id}', parsedArgs.id.toString())
+            .replace(/\/+$/, '') + queryParams(options)
 }
 
 /**
-* @see \App\Http\Controllers\PrintHistoryController::index
- * @see app/Http/Controllers/PrintHistoryController.php:16
- * @route '/home/print/history'
+* @see \App\Http\Controllers\PrintHistoryController::returnToQueue
+ * @see app/Http/Controllers/PrintHistoryController.php:170
+ * @route '/api/print-history/return-to-queue/{id}'
  */
-index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
-    url: index.url(options),
-    method: 'get',
+returnToQueue.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: returnToQueue.url(args, options),
+    method: 'post',
 })
+
 /**
-* @see \App\Http\Controllers\PrintHistoryController::index
- * @see app/Http/Controllers/PrintHistoryController.php:16
- * @route '/home/print/history'
+* @see \App\Http\Controllers\PrintHistoryController::returnToQueueMultiple
+ * @see app/Http/Controllers/PrintHistoryController.php:199
+ * @route '/api/print-history/return-to-queue-multiple'
  */
-index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
-    url: index.url(options),
-    method: 'head',
+export const returnToQueueMultiple = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: returnToQueueMultiple.url(options),
+    method: 'post',
 })
-const PrintHistoryController = { reprintSingle, reprintMultiple, destroy, destroyMultiple, index }
+
+returnToQueueMultiple.definition = {
+    methods: ["post"],
+    url: '/api/print-history/return-to-queue-multiple',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\PrintHistoryController::returnToQueueMultiple
+ * @see app/Http/Controllers/PrintHistoryController.php:199
+ * @route '/api/print-history/return-to-queue-multiple'
+ */
+returnToQueueMultiple.url = (options?: RouteQueryOptions) => {
+    return returnToQueueMultiple.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\PrintHistoryController::returnToQueueMultiple
+ * @see app/Http/Controllers/PrintHistoryController.php:199
+ * @route '/api/print-history/return-to-queue-multiple'
+ */
+returnToQueueMultiple.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: returnToQueueMultiple.url(options),
+    method: 'post',
+})
+const PrintHistoryController = { index, reprintSingle, reprintMultiple, destroy, destroyMultiple, returnToQueue, returnToQueueMultiple }
 
 export default PrintHistoryController

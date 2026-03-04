@@ -172,11 +172,100 @@ destroyMultiple.delete = (options?: RouteQueryOptions): RouteDefinition<'delete'
     url: destroyMultiple.url(options),
     method: 'delete',
 })
+
+/**
+* @see \App\Http\Controllers\PrintHistoryController::returnToQueue
+ * @see app/Http/Controllers/PrintHistoryController.php:170
+ * @route '/api/print-history/return-to-queue/{id}'
+ */
+export const returnToQueue = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: returnToQueue.url(args, options),
+    method: 'post',
+})
+
+returnToQueue.definition = {
+    methods: ["post"],
+    url: '/api/print-history/return-to-queue/{id}',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\PrintHistoryController::returnToQueue
+ * @see app/Http/Controllers/PrintHistoryController.php:170
+ * @route '/api/print-history/return-to-queue/{id}'
+ */
+returnToQueue.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
+    if (typeof args === 'string' || typeof args === 'number') {
+        args = { id: args }
+    }
+
+    
+    if (Array.isArray(args)) {
+        args = {
+                    id: args[0],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        id: args.id,
+                }
+
+    return returnToQueue.definition.url
+            .replace('{id}', parsedArgs.id.toString())
+            .replace(/\/+$/, '') + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\PrintHistoryController::returnToQueue
+ * @see app/Http/Controllers/PrintHistoryController.php:170
+ * @route '/api/print-history/return-to-queue/{id}'
+ */
+returnToQueue.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: returnToQueue.url(args, options),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\PrintHistoryController::returnToQueueMultiple
+ * @see app/Http/Controllers/PrintHistoryController.php:199
+ * @route '/api/print-history/return-to-queue-multiple'
+ */
+export const returnToQueueMultiple = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: returnToQueueMultiple.url(options),
+    method: 'post',
+})
+
+returnToQueueMultiple.definition = {
+    methods: ["post"],
+    url: '/api/print-history/return-to-queue-multiple',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\PrintHistoryController::returnToQueueMultiple
+ * @see app/Http/Controllers/PrintHistoryController.php:199
+ * @route '/api/print-history/return-to-queue-multiple'
+ */
+returnToQueueMultiple.url = (options?: RouteQueryOptions) => {
+    return returnToQueueMultiple.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\PrintHistoryController::returnToQueueMultiple
+ * @see app/Http/Controllers/PrintHistoryController.php:199
+ * @route '/api/print-history/return-to-queue-multiple'
+ */
+returnToQueueMultiple.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: returnToQueueMultiple.url(options),
+    method: 'post',
+})
 const printHistory = {
     reprintSingle: Object.assign(reprintSingle, reprintSingle),
 reprintMultiple: Object.assign(reprintMultiple, reprintMultiple),
 destroy: Object.assign(destroy, destroy),
 destroyMultiple: Object.assign(destroyMultiple, destroyMultiple),
+returnToQueue: Object.assign(returnToQueue, returnToQueue),
+returnToQueueMultiple: Object.assign(returnToQueueMultiple, returnToQueueMultiple),
 }
 
 export default printHistory

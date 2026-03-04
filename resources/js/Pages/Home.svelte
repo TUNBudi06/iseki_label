@@ -25,7 +25,7 @@
     import { routeUrl } from '@tunbudi06/inertia-route-helper';
     import { router } from '@inertiajs/core';
     import { toast } from 'svelte-sonner';
-    import { destroy } from '$routes/api/queue-label-prints';
+    import { destroy, toggleAutoPrint } from '$routes/api/queue-label-prints';
     import { markAsPrinted } from '$routes/home';
 
     // Interface matching backend data structure
@@ -82,6 +82,7 @@
         'area_name',
     ]);
     let isPrinting = $state(false);
+    let isTogglingAutoprint = $state<number | null>(null);
 
     // Statistics from props
     let totalToday = $derived(totalLabelToday);
@@ -307,6 +308,39 @@
         }
     }
 
+    // Toggle auto_print for a single queue item
+    async function toggleAutoPrintItem(index: number) {
+        const labelId = handler.rows[index].id;
+        isTogglingAutoprint = labelId;
+        try {
+            const response = await fetch(
+                routeUrl(toggleAutoPrint({ id: labelId })),
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN':
+                            document
+                                .querySelector('meta[name="csrf-token"]')
+                                ?.getAttribute('content') || '',
+                    },
+                },
+            );
+            const data = await response.json();
+            if (data.success) {
+                toast.success(data.message);
+                await reloadOnly();
+            } else {
+                toast.error(data.message || 'Gagal mengubah status auto print');
+            }
+        } catch (error) {
+            console.error('Toggle auto print failed:', error);
+            toast.error('Gagal mengubah status auto print.');
+        } finally {
+            isTogglingAutoprint = null;
+        }
+    }
+
     // Helper: open autoprint page; prefer named route if available
     function openAutoPrintPage() {
         router.visit(routeUrl(autoPrint()));
@@ -495,6 +529,9 @@
                                 <Table.Head class="text-center"
                                     >Priority</Table.Head
                                 >
+                                <Table.Head class="text-center"
+                                    >Auto Print</Table.Head
+                                >
                                 <Table.Head>Created At</Table.Head>
                                 <Table.Head class="text-center"
                                     >Actions</Table.Head
@@ -577,6 +614,25 @@
                                             >
                                                 Normal
                                             </span>
+                                        {/if}
+                                    </Table.Cell>
+                                    <!-- Auto Print Toggle -->
+                                    <Table.Cell class="text-center">
+                                        <button
+                                            type="button"
+                                            onclick={() => toggleAutoPrintItem(index)}
+                                            disabled={isTogglingAutoprint === handler.rows[index].id}
+                                            title={item.auto_print ? 'Auto Print: ON — klik untuk mematikan' : 'Auto Print: OFF — klik untuk mengaktifkan'}
+                                            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed
+                                                {item.auto_print ? 'bg-pink-500' : 'bg-gray-300'}"
+                                        >
+                                            <span
+                                                class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform
+                                                    {item.auto_print ? 'translate-x-6' : 'translate-x-1'}"
+                                            ></span>
+                                        </button>
+                                        {#if isTogglingAutoprint === handler.rows[index].id}
+                                            <span class="ml-1 text-xs text-gray-400">⏳</span>
                                         {/if}
                                     </Table.Cell>
                                     <Table.Cell class="text-sm text-gray-600">

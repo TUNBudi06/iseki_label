@@ -91,4 +91,29 @@ class HomeController extends Controller
             return \response(null, 500);
         }
     }
+
+    /**
+     * Toggle auto_print flag for a queue item.
+     */
+    public function toggleAutoPrint(int $id)
+    {
+        try {
+            $label = QueueLabelPrint::findOrFail($id);
+            $label->auto_print = ! $label->auto_print;
+            $label->save();
+
+            return response()->json([
+                'success' => true,
+                'auto_print' => $label->auto_print,
+                'message' => $label->auto_print
+                    ? 'Label ditambahkan ke auto print queue'
+                    : 'Label dikeluarkan dari auto print queue',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengubah status auto print: '.$e->getMessage(),
+            ], 500);
+        }
+    }
 }

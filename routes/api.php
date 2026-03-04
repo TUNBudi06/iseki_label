@@ -1,28 +1,5 @@
 <?php
 
-
-// API routes for print history
-use App\Http\Controllers\HomeController;
-use App\Http\Controllers\PrintHistoryController;
-
-Route::prefix('print-history')->group(function () {
-    Route::post('/reprint/{id}', [PrintHistoryController::class, 'reprintSingle'])->name('api.print-history.reprint-single');
-    Route::post('/reprint-multiple', [PrintHistoryController::class, 'reprintMultiple'])->name('api.print-history.reprint-multiple');
-    Route::delete('/{id}', [PrintHistoryController::class, 'destroy'])->name('api.print-history.destroy');
-    Route::delete('/', [PrintHistoryController::class, 'destroyMultiple'])->name('api.print-history.destroy-multiple');
-});
-
-// API routes for queue management
-Route::prefix('queue-label-prints')->group(function () {
-    Route::delete('/{id}', [HomeController::class, 'destroy'])->name('api.queue-label-prints.destroy');
-});
-
-Route::prefix('auto-print')->group(function () {
-    Route::get('/list', [\App\Http\Controllers\AutoPrintController::class, 'getAutoPrintList'])->name('api.auto-print.list-auto');
-    Route::post('/mark-as-printed', [\App\Http\Controllers\AutoPrintController::class, 'markAsPrinted'])->name('api.auto-print.mark-auto-print');
-});
-
-Route::prefix('rack')->group(function () {
-    Route::get('/table-fetching', [\App\Http\Controllers\RackController::class, 'dataFetching'])->name('api.rack.data-fetching');
-    Route::get('single/{id}', [\App\Http\Controllers\RackController::class, 'getSingleRack'])->name('api.rack.get-single');
-});
+// All API routes have been moved to routes/web.php
+// to support session-based authentication (cookies).
+// See the Route::prefix('api') group at the bottom of web.php.

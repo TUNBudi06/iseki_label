@@ -11,8 +11,9 @@
         Pagination,
     } from '@vincjo/datatables';
     import { onMount } from 'svelte';
-    import { assetUrl } from '@tunbudi06/inertia-route-helper';
+    import { assetUrl, routeUrl } from '@tunbudi06/inertia-route-helper';
     import { toast } from 'svelte-sonner';
+    import PrintHistoryController from '$/actions/App/Http/Controllers/PrintHistoryController';
 
     // Interface matching backend QueueLabelPrint model
     interface HistoryItem {
@@ -59,6 +60,7 @@
     let selectedIds = $state<number[]>([]);
     let isDeleting = $state(false);
     let isPrinting = $state(false);
+    let isReturning = $state(false);
 
     // Statistics - computed from local data
     let totalPrinted = $derived(localHistoryData.length);
@@ -104,7 +106,7 @@
 
         try {
             const response = await fetch(
-                '/api/print-history/reprint-multiple',
+                routeUrl(PrintHistoryController.reprintMultiple()),
                 {
                     method: 'POST',
                     headers: {
@@ -122,7 +124,6 @@
 
             if (data.success) {
                 toast.success(data.message);
-                // Open print page in new window
                 window.open(data.printUrl, '_blank');
                 selectedIds = [];
             } else {
@@ -141,7 +142,7 @@
         isPrinting = true;
 
         try {
-            const response = await fetch(`/api/print-history/reprint/${id}`, {
+            const response = await fetch(routeUrl(PrintHistoryController.reprintSingle(id)), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -156,7 +157,6 @@
 
             if (data.success) {
                 toast.success(data.message);
-                // Open print page in new window
                 window.open(data.printUrl, '_blank');
             } else {
                 toast.error(data.message || 'Gagal reprint label');
@@ -177,7 +177,7 @@
         isDeleting = true;
 
         try {
-            const response = await fetch(`/api/print-history/${id}`, {
+            const response = await fetch(routeUrl(PrintHistoryController.destroy(id)), {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -192,7 +192,6 @@
 
             if (data.success) {
                 toast.success(data.message);
-                // Remove from local state
                 localHistoryData = localHistoryData.filter((h) => h.id !== id);
                 selectedIds = selectedIds.filter((i) => i !== id);
             } else {
@@ -221,7 +220,7 @@
         isDeleting = true;
 
         try {
-            const response = await fetch('/api/print-history/', {
+            const response = await fetch(routeUrl(PrintHistoryController.destroyMultiple()), {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -237,7 +236,6 @@
 
             if (data.success) {
                 toast.success(data.message);
-                // Remove from local state
                 localHistoryData = localHistoryData.filter(
                     (h) => !selectedIds.includes(h.id),
                 );
@@ -251,6 +249,97 @@
         } finally {
             isDeleting = false;
         }
+    }
+
+    // Return single label to queue
+    async function returnToQueueSingle(id: number) {
+        const confirm = window.confirm('Kembalikan label ini ke queue untuk dicetak ulang?');
+        if (!confirm) return;
+
+        isReturning = true;
+
+        try {
+            const response = await fetch(routeUrl(PrintHistoryController.returnToQueue(id)), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector('meta[name="csrf-token"]')
+                            ?.getAttribute('content') || '',
+                },
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                toast.success(data.message);
+                localHistoryData = localHistoryData.filter((h) => h.id !== id);
+                selectedIds = selectedIds.filter((i) => i !== id);
+            } else {
+                toast.error(data.message || 'Gagal mengembalikan label ke queue');
+            }
+        } catch (error) {
+            console.error('Return to queue failed:', error);
+            toast.error('Gagal mengembalikan label ke queue. Silakan coba lagi.');
+        } finally {
+            isReturning = false;
+        }
+    }
+
+    // Return multiple labels to queue
+    async function returnToQueueSelected() {
+        if (selectedIds.length === 0) {
+            toast.error('Pilih minimal 1 item untuk dikembalikan ke queue!');
+            return;
+        }
+
+        const confirm = window.confirm(
+            `Kembalikan ${selectedIds.length} label ke queue untuk dicetak ulang?`,
+        );
+        if (!confirm) return;
+
+        isReturning = true;
+
+        try {
+            const response = await fetch(routeUrl(PrintHistoryController.returnToQueueMultiple()), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector('meta[name="csrf-token"]')
+                            ?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({ ids: selectedIds }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                toast.success(data.message);
+                localHistoryData = localHistoryData.filter(
+                    (h) => !selectedIds.includes(h.id),
+                );
+                selectedIds = [];
+            } else {
+                toast.error(data.message || 'Gagal mengembalikan label ke queue');
+            }
+        } catch (error) {
+            console.error('Return to queue failed:', error);
+            toast.error('Gagal mengembalikan label ke queue. Silakan coba lagi.');
+        } finally {
+            isReturning = false;
+        }
+    }
+
+    // Get initials from full name
+    function getInitials(name: string): string {
+        return name
+            .split(' ')
+            .map((n) => n[0])
+            .join('')
+            .toUpperCase();
     }
 
     // Refresh data
@@ -363,7 +452,7 @@
                             </span>
                             <Button
                                 onclick={reprintSelected}
-                                disabled={isPrinting}
+                                disabled={isPrinting || isDeleting || isReturning}
                                 size="sm"
                                 class="bg-green-600 hover:bg-green-700"
                             >
@@ -372,8 +461,18 @@
                                     : `🖨️ Reprint (${selectedIds.length})`}
                             </Button>
                             <Button
+                                onclick={returnToQueueSelected}
+                                disabled={isPrinting || isDeleting || isReturning}
+                                size="sm"
+                                class="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                                {isReturning
+                                    ? '⏳ Processing...'
+                                    : `↩️ Return to Queue (${selectedIds.length})`}
+                            </Button>
+                            <Button
                                 onclick={deleteSelected}
-                                disabled={isDeleting}
+                                disabled={isPrinting || isDeleting || isReturning}
                                 size="sm"
                                 variant="destructive"
                             >
@@ -464,15 +563,9 @@
                                             <span
                                                 class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-xs font-bold text-green-700"
                                             >
-                                                {@html item.requested_by
-                                                    .split(' ')
-                                                    .map((n) => n[0])
-                                                    .join('')
-                                                    .toUpperCase()}
+                                                {getInitials(item.requested_by)}
                                             </span>
-                                            <span
-                                                >{@html item.requested_by}</span
-                                            >
+                                            <span>{item.requested_by}</span>
                                         </div>
                                     </Table.Cell>
                                     <Table.Cell class="text-center">
@@ -515,7 +608,8 @@
                                                 onclick={() =>
                                                     reprintSingle(item.id)}
                                                 disabled={isPrinting ||
-                                                    isDeleting}
+                                                    isDeleting ||
+                                                    isReturning}
                                                 size="sm"
                                                 class="bg-green-600 hover:bg-green-700"
                                                 title="Reprint label ini"
@@ -524,9 +618,22 @@
                                             </Button>
                                             <Button
                                                 onclick={() =>
+                                                    returnToQueueSingle(item.id)}
+                                                disabled={isPrinting ||
+                                                    isDeleting ||
+                                                    isReturning}
+                                                size="sm"
+                                                class="bg-blue-600 hover:bg-blue-700 text-white"
+                                                title="Kembalikan ke queue"
+                                            >
+                                                ↩️
+                                            </Button>
+                                            <Button
+                                                onclick={() =>
                                                     deleteFromHistory(item.id)}
                                                 disabled={isPrinting ||
-                                                    isDeleting}
+                                                    isDeleting ||
+                                                    isReturning}
                                                 size="sm"
                                                 variant="destructive"
                                                 title="Hapus dari history"
@@ -562,11 +669,14 @@
                     </h4>
                     <ul class="text-sm text-green-800 space-y-1">
                         <li>
-                            • <strong>Reprint</strong> - Cetak ulang label yang sudah
+                            • <strong>🖨️ Reprint</strong> - Cetak ulang label yang sudah
                             pernah dicetak
                         </li>
                         <li>
-                            • <strong>Delete</strong> - Hapus dari history (tidak
+                            • <strong>↩️ Return to Queue</strong> - Kembalikan label ke antrian cetak (jika tidak sengaja di-mark done)
+                        </li>
+                        <li>
+                            • <strong>🗑️ Delete</strong> - Hapus dari history (tidak
                             mempengaruhi data asli)
                         </li>
                         <li>

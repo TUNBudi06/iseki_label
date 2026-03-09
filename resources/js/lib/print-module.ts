@@ -28,7 +28,9 @@ export class PrintAPI {
     constructor(host: string = '127.0.0.1', port: number = 60001) {
         this.api = axios.create({
             baseURL: `http://${host}:${port}`,
-            timeout: 5000,
+            // Health/printer-list calls are fast (5s is fine).
+            // printPDF overrides this per-request with a much longer timeout.
+            timeout: 10000,
         });
     }
 
@@ -53,6 +55,7 @@ export class PrintAPI {
         printer: string,
         webhook?: string,
         webhook_data?: string,
+        timeoutMs: number = 120_000,
     ): Promise<any> {
         const form = new FormData();
         form.append('pdf', file);
@@ -61,8 +64,11 @@ export class PrintAPI {
         if (webhook) form.append('webhook', webhook);
         if (webhook_data) form.append('webhook_data', webhook_data);
 
+        // Use a per-request timeout that overrides the instance default (5s is
+        // far too short for large multi-page PDFs that take time to spool).
         const res = await this.api.post('/print', form, {
             headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: timeoutMs,
         });
 
         return res.data;

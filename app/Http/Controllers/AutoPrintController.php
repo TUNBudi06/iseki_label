@@ -13,7 +13,7 @@ class AutoPrintController extends Controller
         return Inertia::render('AutoPrint/AutoPrintPage');
     }
 
-    public function getAutoPrintList()
+    public function listAuto()
     {
         $autoPrintList = QueueLabelPrint::where('auto_print', true)
             ->where('printed', false)
@@ -24,6 +24,12 @@ class AutoPrintController extends Controller
         debugbar()->log($autoPrintList);
 
         return response()->json($autoPrintList);
+    }
+
+    // Keep old name as alias for backward compatibility
+    public function getAutoPrintList()
+    {
+        return $this->listAuto();
     }
 
     public function markAsPrinted(Request $request)
@@ -42,8 +48,15 @@ class AutoPrintController extends Controller
         }
 
         debugbar()->info($id_list);
-        QueueLabelPrint::whereIn('id', $id_list)->update(['printed' => true]);
 
-        return response()->json(['marked' => count($id_list), 'ids' => $id_list]);
+        // Use the actual DB update count — not just the submitted ID count.
+        // This way the frontend can detect if rows weren't actually updated.
+        $updated = QueueLabelPrint::whereIn('id', $id_list)->update(['printed' => true]);
+
+        return response()->json([
+            'marked' => $updated,
+            'submitted' => count($id_list),
+            'ids' => $id_list,
+        ]);
     }
 }

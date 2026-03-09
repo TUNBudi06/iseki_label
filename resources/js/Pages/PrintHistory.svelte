@@ -15,6 +15,10 @@
     import { toast } from 'svelte-sonner';
     import PrintHistoryController from '$/actions/App/Http/Controllers/PrintHistoryController';
 
+    // Use window.axios (pre-configured with XSRF cookie handling) instead of
+    // plain fetch so CSRF tokens are always sent correctly on every request.
+    const ax = (window as any).axios as import('axios').AxiosInstance;
+
     // Interface matching backend QueueLabelPrint model
     interface HistoryItem {
         id: number;
@@ -105,22 +109,10 @@
         isPrinting = true;
 
         try {
-            const response = await fetch(
+            const { data } = await ax.post(
                 routeUrl(PrintHistoryController.reprintMultiple()),
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN':
-                            document
-                                .querySelector('meta[name="csrf-token"]')
-                                ?.getAttribute('content') || '',
-                    },
-                    body: JSON.stringify({ ids: selectedIds }),
-                },
+                { ids: selectedIds },
             );
-
-            const data = await response.json();
 
             if (data.success) {
                 toast.success(data.message);
@@ -142,18 +134,9 @@
         isPrinting = true;
 
         try {
-            const response = await fetch(routeUrl(PrintHistoryController.reprintSingle(id)), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN':
-                        document
-                            .querySelector('meta[name="csrf-token"]')
-                            ?.getAttribute('content') || '',
-                },
-            });
-
-            const data = await response.json();
+            const { data } = await ax.post(
+                routeUrl(PrintHistoryController.reprintSingle(id)),
+            );
 
             if (data.success) {
                 toast.success(data.message);
@@ -177,18 +160,9 @@
         isDeleting = true;
 
         try {
-            const response = await fetch(routeUrl(PrintHistoryController.destroy(id)), {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN':
-                        document
-                            .querySelector('meta[name="csrf-token"]')
-                            ?.getAttribute('content') || '',
-                },
-            });
-
-            const data = await response.json();
+            const { data } = await ax.delete(
+                routeUrl(PrintHistoryController.destroy(id)),
+            );
 
             if (data.success) {
                 toast.success(data.message);
@@ -220,19 +194,10 @@
         isDeleting = true;
 
         try {
-            const response = await fetch(routeUrl(PrintHistoryController.destroyMultiple()), {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN':
-                        document
-                            .querySelector('meta[name="csrf-token"]')
-                            ?.getAttribute('content') || '',
-                },
-                body: JSON.stringify({ ids: selectedIds }),
-            });
-
-            const data = await response.json();
+            const { data } = await ax.delete(
+                routeUrl(PrintHistoryController.destroyMultiple()),
+                { data: { ids: selectedIds } },
+            );
 
             if (data.success) {
                 toast.success(data.message);
@@ -259,18 +224,9 @@
         isReturning = true;
 
         try {
-            const response = await fetch(routeUrl(PrintHistoryController.returnToQueue(id)), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN':
-                        document
-                            .querySelector('meta[name="csrf-token"]')
-                            ?.getAttribute('content') || '',
-                },
-            });
-
-            const data = await response.json();
+            const { data } = await ax.post(
+                routeUrl(PrintHistoryController.returnToQueue(id)),
+            );
 
             if (data.success) {
                 toast.success(data.message);
@@ -302,19 +258,10 @@
         isReturning = true;
 
         try {
-            const response = await fetch(routeUrl(PrintHistoryController.returnToQueueMultiple()), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN':
-                        document
-                            .querySelector('meta[name="csrf-token"]')
-                            ?.getAttribute('content') || '',
-                },
-                body: JSON.stringify({ ids: selectedIds }),
-            });
-
-            const data = await response.json();
+            const { data } = await ax.post(
+                routeUrl(PrintHistoryController.returnToQueueMultiple()),
+                { ids: selectedIds },
+            );
 
             if (data.success) {
                 toast.success(data.message);

@@ -57,6 +57,13 @@
         Loader2,
     } from '@lucide/svelte';
 
+    // ─── axios helper ──────────────────────────────────────────────────────────
+    // window.axios (bootstrap.js) is pre-configured with X-Requested-With.
+    // It automatically reads the XSRF-TOKEN cookie and sets X-XSRF-TOKEN on every
+    // request, so CSRF tokens are always fresh regardless of which cycle we're on.
+    // This is the canonical fix for 419 errors on 2nd+ cycles with plain fetch.
+    const ax = (window as any).axios as import('axios').AxiosInstance;
+
     // ============================================================================
     // TYPES
     // ============================================================================
@@ -78,6 +85,8 @@
         error: string | null;
         lastRunAt: number | null;
         selectedPrinter: string | null;
+        lastUploadIds: number[];
+        lastUploadAt: number | null;
     }
 
     // ============================================================================
@@ -162,6 +171,8 @@
             error: null,
             lastRunAt: null,
             selectedPrinter: null,
+            lastUploadIds: [],
+            lastUploadAt: null,
         } as PrintContext,
         states: {
             // ── Waiting for next tick ───────────────────────────────────────────
@@ -257,6 +268,7 @@
 
             // ── Send to printer ─────────────────────────────────────────────────
             printing: {
+                entry: () => console.log('[AutoPrint] → printing: sending PDF to print server'),
                 invoke: {
                     src: 'executePrint',
                     input: ({ context }: { context: PrintContext }) => context,
@@ -265,9 +277,75 @@
                         actions: assign({ printOk: true }),
                     },
                     onError: {
-                        // Print failure: silently reset all state back to idle
-                        // so the next cycle can retry cleanly
+                        // Hard stop on print failure — going to idle would cause
+                        // the same labels to be re-fetched and double-printed on
+                        // the next cycle (especially with large batches that time
+                        // out). The user must dismiss the error manually.
+                        target: 'error',
+                        actions: assign({
+                            error: ({ event }) => {
+                                const msg = (event.error as Error)?.message ?? String(event.error);
+                                console.error('[AutoPrint] printing FAILED:', msg);
+                                return msg;
+                            },
+                        }),
+                    },
+                },
+            },
+
+            // ── Print success confirmation node ─────────────────────────────────
+            print_ok: {
+                entry: () => console.log('[AutoPrint] → print_ok: print succeeded, waiting before upload'),
+                after: { [DURATION_ANIMATION * 1000]: 'uploading' },
+            },
+
+            // ── Upload result / mark jobs done in DB ────────────────────────────
+            // If this fails everything stops (goes to error, service pauses)
+            uploading: {
+                entry: () => console.log('[AutoPrint] → uploading: marking labels as printed in DB'),
+                invoke: {
+                    src: 'executeUpload',
+                    input: ({ context }: { context: PrintContext }) => context,
+                    onDone: {
+                        target: 'upload_ok',
+                        actions: assign({
+                            uploadOk: true,
+                            lastUploadIds: ({ event }) => (event.output as any)?.ids ?? [],
+                            lastUploadAt: () => Date.now(),
+                        }),
+                    },
+                    onError: {
+                        // Hard stop — upload failure means data integrity risk
+                        target: 'error',
+                        actions: assign({
+                            error: ({ event }) => {
+                                const msg = (event.error as Error)?.message ?? String(event.error);
+                                console.error('[AutoPrint] uploading FAILED:', msg);
+                                return msg;
+                            },
+                        }),
+                    },
+                },
+            },
+
+            // ── Upload success, cycle complete ──────────────────────────────────
+            upload_ok: {
+                entry: assign({
+                    queueData: [],
+                    renderedData: [],
+                    pdfBlob: null,
+                }),
+                after: { [DURATION_ANIMATION * 1000]: 'idle' },
+            },
+
+            // ── Hard error — service stops, user must dismiss ───────────────────
+            error: {
+                on: {
+                    RESET: {
                         target: 'idle',
+                        // Clear stale data so dismissed errors don't cause the
+                        // same labels to be re-rendered or re-printed on the
+                        // next fetch cycle.
                         actions: assign({
                             queueData: [],
                             renderedData: [],
@@ -279,57 +357,20 @@
                     },
                 },
             },
-
-            // ── Print success confirmation node ─────────────────────────────────
-            print_ok: {
-                after: { [DURATION_ANIMATION * 1000]: 'uploading' },
-            },
-
-            // ── Upload result / mark jobs done in DB ────────────────────────────
-            // If this fails everything stops (goes to error, service pauses)
-            uploading: {
-                invoke: {
-                    src: 'executeUpload',
-                    input: ({ context }: { context: PrintContext }) => context,
-                    onDone: {
-                        target: 'upload_ok',
-                        actions: assign({ uploadOk: true }),
-                    },
-                    onError: {
-                        // Hard stop — upload failure means data integrity risk
-                        target: 'error',
-                        actions: assign({
-                            error: ({ event }) =>
-                                (event.error as Error)?.message ??
-                                String(event.error),
-                        }),
-                    },
-                },
-            },
-
-            // ── Upload success, cycle complete ──────────────────────────────────
-            upload_ok: {
-                after: { [DURATION_ANIMATION * 1000]: 'idle' },
-                entry: assign({
-                    queueData: [],
-                    renderedData: [],
-                    pdfBlob: null,
-                }),
-            },
-
-            // ── Hard error — service stops, user must dismiss ───────────────────
-            error: {
-                on: { RESET: 'idle' },
-                // No auto-reset: upload errors must be manually acknowledged
-            },
         },
     }).provide({
         actors: {
             fetchQueueData: fromPromise(async () => {
-                const response = await fetch(routeUrl(listAuto()));
-                if (!response.ok)
-                    throw new Error('Failed to fetch print queue');
-                return response.json();
+                // Use axios so XSRF-TOKEN cookie is sent automatically.
+                // _t cache-buster ensures we never get a stale cached response
+                // on the 2nd+ cycle (important when many labels are processed).
+                const { data } = await ax.get(routeUrl(listAuto()), {
+                    params: { _t: Date.now() },
+                });
+                if (!Array.isArray(data)) {
+                    throw new Error('Invalid response from server — expected array');
+                }
+                return data;
             }),
 
             generatePdf: fromPromise(async () => {
@@ -338,7 +379,15 @@
 
                 // Wait for Svelte to flush DOM updates from renderedData
                 await tick();
-                await new Promise((r) => setTimeout(r, 600));
+
+                // Initial flush: count pages first so we can wait proportionally.
+                // Even before jsPDF loads we need the DOM settled, so do a quick
+                // count here and wait base + 500ms per page (min 1s).
+                const preSheets =
+                    labelContainerRef.querySelectorAll('.A4-print-page');
+                const pageCount = preSheets.length;
+                const flushWait = Math.max(1000, 1000 + pageCount * 500);
+                await new Promise((r) => setTimeout(r, flushWait));
 
                 const [{ default: jsPDF }, { default: html2canvas }] =
                     await Promise.all([
@@ -392,18 +441,27 @@
 
                     const api = new PrintAPI();
 
-                    // 30s timeout — on timeout or failure, state resets to idle
-                    const timeout = new Promise<never>((_, reject) =>
-                        setTimeout(
-                            () => reject(new Error('Print request timed out')),
-                            30_000,
-                        ),
+                    // Scale timeout with PDF size: base 90s + 15s per MB (min 90s).
+                    // This timeout is passed INTO printPDF so the per-request axios
+                    // timeout matches — the old 5s instance timeout was killing large
+                    // multi-page PDFs before SumatraPDF finished spooling them.
+                    const blobSizeMb = input.pdfBlob.size / (1024 * 1024);
+                    const printTimeoutMs = Math.max(
+                        90_000,
+                        90_000 + Math.ceil(blobSizeMb) * 15_000,
                     );
 
-                    const result = await Promise.race([
-                        api.printPDF(pdfFile, input.selectedPrinter),
-                        timeout,
-                    ]);
+                    console.log(`[AutoPrint] executePrint: PDF=${blobSizeMb.toFixed(2)}MB, timeout=${printTimeoutMs/1000}s, printer="${input.selectedPrinter}"`);
+
+                    const result = await api.printPDF(
+                        pdfFile,
+                        input.selectedPrinter,
+                        undefined,
+                        undefined,
+                        printTimeoutMs,
+                    );
+
+                    console.log('[AutoPrint] executePrint: print server response', result);
 
                     if (!result?.success) {
                         throw new Error(
@@ -416,20 +474,36 @@
             executeUpload: fromPromise(
                 async ({ input }: { input: PrintContext }) => {
                     const ids = input.queueData.map((item: any) => item.id);
-                    const response = await fetch(routeUrl(markAutoPrint()), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRF-TOKEN':
-                                document
-                                    .querySelector('meta[name="csrf-token"]')
-                                    ?.getAttribute('content') ?? '',
-                        },
-                        body: JSON.stringify({ ids: JSON.stringify(ids) }),
+
+                    if (ids.length === 0) {
+                        // Nothing to mark — treat as success so the cycle ends cleanly
+                        console.warn('[AutoPrint] executeUpload: queueData is empty, skipping POST');
+                        return { marked: 0, ids: [] };
+                    }
+
+                    console.log(`[AutoPrint] executeUpload: marking ${ids.length} labels as printed`, ids);
+
+                    // axios automatically reads the XSRF-TOKEN cookie and sets
+                    // X-XSRF-TOKEN on every request — no manual token management
+                    // or retry needed. This is the fix for 419 on 2nd+ cycles.
+                    const { data } = await ax.post(routeUrl(markAutoPrint()), {
+                        ids: JSON.stringify(ids),
                     });
-                    if (!response.ok)
-                        throw new Error('Upload failed — service stopped');
+
+                    console.log('[AutoPrint] executeUpload: server response', data);
+
+                    // Verify the server actually updated the records.
+                    // If `marked` is 0 or missing the labels were NOT saved
+                    // → throw so the machine goes to error (stops the loop).
+                    const markedCount = data?.marked ?? 0;
+                    if (markedCount === 0) {
+                        throw new Error(
+                            `Upload succeeded but no records were marked (ids: ${ids.join(', ')}). ` +
+                            `Check that the IDs exist and have auto_print=true.`,
+                        );
+                    }
+
+                    return { marked: markedCount, ids };
                 },
             ),
         },
@@ -730,10 +804,16 @@
                 class="bg-muted/50 px-4 py-2 rounded-lg flex items-center gap-2 text-sm text-muted-foreground"
             >
                 <CheckCircle2 class="w-4 h-4 text-green-500" />
-                <span
-                    >Last check: {formatLastRun($snapshot.context.lastRunAt)} • Queue:
-                    {$snapshot.context.queueData.length} items</span
-                >
+                <span>
+                    Last check: {formatLastRun($snapshot.context.lastRunAt)}
+                    {#if $snapshot.context.lastUploadAt}
+                        • Last marked: <strong class="text-green-600">{$snapshot.context.lastUploadIds.length} labels</strong>
+                        (IDs: {$snapshot.context.lastUploadIds.join(', ')})
+                        @ {new Date($snapshot.context.lastUploadAt).toLocaleTimeString()}
+                    {:else}
+                        • No labels marked yet this session
+                    {/if}
+                </span>
             </div>
         {/if}
 

@@ -22,6 +22,7 @@
     import { routeUrl } from '@tunbudi06/inertia-route-helper';
     import { store as storeRoute, importExcel as importExcelRoute, template as templateRoute } from '$routes/import-label/index.ts';
     import { searchRack as searchRackRoute } from '$routes/api/import-label/index.ts';
+    import {formatCode10} from "$lib/print/text/text-formatter.ts";
 
     // Suppress unused namespace warnings
     const _t = Table;
@@ -339,7 +340,7 @@
                                                 <div
                                                     class="font-mono text-sm font-semibold text-pink-900"
                                                 >
-                                                    {rack.rack_no}
+                                                    {rack.rack_no} + {formatCode10(rack.item_code)}
                                                 </div>
                                                 <div class="truncate text-xs text-slate-500">
                                                     {rack.part_name ?? rack.item_code}

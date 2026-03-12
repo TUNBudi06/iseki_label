@@ -3,6 +3,7 @@
 use App\Http\Controllers\AboutController;
 use App\Http\Controllers\AutoPrintController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ImportLabelController;
 use App\Http\Controllers\LoggerPerubahanController;
 use App\Http\Controllers\PrintHistoryController;
 use App\Http\Controllers\RackController;
@@ -11,7 +12,6 @@ use App\Http\Controllers\UserController;
 use App\Http\Middleware\AdminOnlyMiddleware;
 use App\Http\Middleware\AuthMiddleware;
 use Illuminate\Support\Facades\Route;
-
 
 Route::get('/', function () {
     return redirect()->route('home');
@@ -25,6 +25,13 @@ Route::prefix('home')->group(function () {
         Route::get('history', [PrintHistoryController::class, 'index'])->name('print.history');
         Route::get('label', [\App\Http\Controllers\PagePrintController::class, 'index'])->name('print.label');
         Route::get('automation', [AutoPrintController::class, 'index'])->name('print.autoPrint');
+    });
+
+    Route::prefix('import-label')->group(function () {
+        Route::get('/', [ImportLabelController::class, 'index'])->name('import-label.index');
+        Route::post('/store', [ImportLabelController::class, 'store'])->name('import-label.store');
+        Route::post('/import-excel', [ImportLabelController::class, 'importFromExcel'])->name('import-label.import-excel');
+        Route::get('/template', [ImportLabelController::class, 'template'])->name('import-label.template');
     });
 });
 
@@ -88,5 +95,9 @@ Route::prefix('api')->group(function () {
         Route::get('/table-fetching', [RackController::class, 'dataFetching'])->name('api.rack.data-fetching');
         Route::get('single/{id}', [RackController::class, 'getSingleRack'])->name('api.rack.get-single');
     });
-});
 
+    // Import Label
+    Route::prefix('import-label')->group(function () {
+        Route::get('/search-rack', [ImportLabelController::class, 'searchRack'])->name('api.import-label.search-rack');
+    });
+});

@@ -3,6 +3,7 @@ import AboutController from './AboutController'
 import PrintHistoryController from './PrintHistoryController'
 import PagePrintController from './PagePrintController'
 import AutoPrintController from './AutoPrintController'
+import ImportLabelController from './ImportLabelController'
 import AuthController from './AuthController'
 import UserController from './UserController'
 import RackPartListController from './RackPartListController'
@@ -14,6 +15,7 @@ AboutController: Object.assign(AboutController, AboutController),
 PrintHistoryController: Object.assign(PrintHistoryController, PrintHistoryController),
 PagePrintController: Object.assign(PagePrintController, PagePrintController),
 AutoPrintController: Object.assign(AutoPrintController, AutoPrintController),
+ImportLabelController: Object.assign(ImportLabelController, ImportLabelController),
 AuthController: Object.assign(AuthController, AuthController),
 UserController: Object.assign(UserController, UserController),
 RackPartListController: Object.assign(RackPartListController, RackPartListController),

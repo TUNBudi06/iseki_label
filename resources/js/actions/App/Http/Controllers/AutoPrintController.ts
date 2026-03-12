@@ -44,7 +44,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\AutoPrintController::getAutoPrintList
- * @see app/Http/Controllers/AutoPrintController.php:16
+ * @see app/Http/Controllers/AutoPrintController.php:30
  * @route '/api/auto-print/list'
  */
 export const getAutoPrintList = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -59,7 +59,7 @@ getAutoPrintList.definition = {
 
 /**
 * @see \App\Http\Controllers\AutoPrintController::getAutoPrintList
- * @see app/Http/Controllers/AutoPrintController.php:16
+ * @see app/Http/Controllers/AutoPrintController.php:30
  * @route '/api/auto-print/list'
  */
 getAutoPrintList.url = (options?: RouteQueryOptions) => {
@@ -68,7 +68,7 @@ getAutoPrintList.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\AutoPrintController::getAutoPrintList
- * @see app/Http/Controllers/AutoPrintController.php:16
+ * @see app/Http/Controllers/AutoPrintController.php:30
  * @route '/api/auto-print/list'
  */
 getAutoPrintList.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -77,7 +77,7 @@ getAutoPrintList.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => 
 })
 /**
 * @see \App\Http\Controllers\AutoPrintController::getAutoPrintList
- * @see app/Http/Controllers/AutoPrintController.php:16
+ * @see app/Http/Controllers/AutoPrintController.php:30
  * @route '/api/auto-print/list'
  */
 getAutoPrintList.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -87,7 +87,7 @@ getAutoPrintList.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =
 
 /**
 * @see \App\Http\Controllers\AutoPrintController::markAsPrinted
- * @see app/Http/Controllers/AutoPrintController.php:29
+ * @see app/Http/Controllers/AutoPrintController.php:35
  * @route '/api/auto-print/mark-as-printed'
  */
 export const markAsPrinted = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -102,7 +102,7 @@ markAsPrinted.definition = {
 
 /**
 * @see \App\Http\Controllers\AutoPrintController::markAsPrinted
- * @see app/Http/Controllers/AutoPrintController.php:29
+ * @see app/Http/Controllers/AutoPrintController.php:35
  * @route '/api/auto-print/mark-as-printed'
  */
 markAsPrinted.url = (options?: RouteQueryOptions) => {
@@ -111,7 +111,7 @@ markAsPrinted.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\AutoPrintController::markAsPrinted
- * @see app/Http/Controllers/AutoPrintController.php:29
+ * @see app/Http/Controllers/AutoPrintController.php:35
  * @route '/api/auto-print/mark-as-printed'
  */
 markAsPrinted.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
